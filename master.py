@@ -6,10 +6,53 @@ from Parser import Parser
 from Optimizer import Optimizer
 from VirtualMachine import VirtualMachine
 
+
+def get_ast(address):
+    t.reset_address(address)
+    p.reset_tokens(t.tokenize())
+    o.ast = p.program()
+    o.optimize()
+    parent = os.path.dirname(address)
+    name = os.path.splitext(os.path.basename(address))[0]
+    try:
+        with open(parent + '/' + name + '.ast', 'wb') as f:
+            pickle.dump(o.ast, f)
+            print(f'ast finish the file {address}')
+            return o.ast
+    except FileNotFoundError:
+        print(f'{address} 不存在')
+        return None
+
+
+def run_ast(address):
+    try:
+        if isinstance(address, str):
+            with open(address, 'rb') as f:
+                v.ast = pickle.load(f)
+        else:
+            v.ast = address
+    except FileNotFoundError:
+        print(f'{address} 不存在')
+    v.vm()
+
+
+address = ''
+if len(sys.argv) > 1:
+    address = sys.argv[1:]
+
 t = Tokenizer('')
 p = Parser([])
 o = Optimizer([])
 v = VirtualMachine([])
+if address:
+    for i in address:
+        if os.path.splitext(i)[1] == '.ast':
+            run_ast(i)
+        else:
+            res = get_ast(i)
+            if res:
+                run_ast(res)
+
 while True:
     line = input().strip()
     if line == 'exit':
@@ -38,16 +81,6 @@ while True:
             address += line[index]
             index += 1
     if ast:
-        t.reset_address(address)
-        p.reset_tokens(t.tokenize())
-        o.ast = p.program()
-        o.optimize()
-        parent = os.path.dirname(address)
-        name = os.path.splitext(os.path.basename(address))[0]
-        with open(parent + '/' + name + '.ast', 'wb') as f:
-            pickle.dump(o.ast, f)
-            print(f'ast finish the file {address}')
+        get_ast(address)
     elif run:
-        with open(address, 'rb') as f:
-            v.ast = pickle.load(f)
-        v.vm()
+        run_ast(address)
