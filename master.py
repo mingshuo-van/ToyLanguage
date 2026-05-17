@@ -83,4 +83,9 @@ while True:
     if ast:
         get_ast(address)
     elif run:
-        run_ast(address)
+        if os.path.splitext(address)[1] == '.ast':
+            run_ast(address)
+        else:
+            res = get_ast(address)
+            if res:
+                run_ast(res)
