@@ -1,5 +1,5 @@
 from Object import *
-from math import gamma,factorial
+from math import gamma, factorial
 
 
 def fac(n):
@@ -110,9 +110,10 @@ class Optimizer:
             '&': lambda x, y: x & y, '|': lambda x, y: x | y,
             '>': lambda x, y: x > y, '<': lambda x, y: x < y,
             '>=': lambda x, y: x >= y, '<=': lambda x, y: x <= y,
-            '&&': lambda x, y: x and y, '||': lambda x, y: x or y,
+            '&&': lambda x, y: False if not x else bool(y),
+            '||': lambda x, y: True if x else bool(y),
             '==': lambda x, y: x == y, '!=': lambda x, y: x != y,
-            '<<': lambda x, y: x << y, '>>': lambda x, y: x >> y,
+            '<<': lambda x, y: x << y, '>>': lambda x, y: x >> y
         }
 
     def bool_optimize(self, node):
@@ -235,11 +236,11 @@ class Optimizer:
                     node = List(left.val + right.val)
             elif op == '&&':
                 # 可以隐式转bool的节点先转bool，并更新对应的判断参数，方便接下来基于常量的优化
-                if x is str:
+                if x is str or xi:
                     node.left = left = bool(left)
                 elif x is List or x is Dict:
                     node.left = left = bool(left.val)
-                if y is str:
+                if y is str or yi:
                     node.right = right = bool(right)
                 elif y is List or y is Dict:
                     node.right = right = bool(right.val)
@@ -253,11 +254,11 @@ class Optimizer:
                     return left
             elif op == '||':
                 # 可以隐式转bool的节点先转bool，并更新对应的判断参数，方便接下来基于常量的优化
-                if x is str:
+                if x is str or xi:
                     node.left = left = bool(left)
                 elif x is List or x is Dict:
                     node.left = left = bool(left.val)
-                if y is str:
+                if y is str or yi:
                     node.right = right = bool(right)
                 elif y is List or y is Dict:
                     node.right = right = bool(right.val)
