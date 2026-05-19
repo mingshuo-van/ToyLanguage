@@ -235,40 +235,52 @@ class Optimizer:
                 elif x is List and y is List:
                     node = List(left.val + right.val)
             elif op == '&&':
+                a = False
+                b = False
                 # 可以隐式转bool的节点先转bool，并更新对应的判断参数，方便接下来基于常量的优化
                 if x is str or xi:
                     node.left = left = bool(left)
+                    a = True
                 elif x is List or x is Dict:
                     node.left = left = bool(left.val)
+                    a = True
                 if y is str or yi:
                     node.right = right = bool(right)
+                    b = True
                 elif y is List or y is Dict:
                     node.right = right = bool(right.val)
+                    b = True
                 # 任何一个操作数为假，整个 and 运算为假
                 if left is False or right is False:
                     node = False
                 # 任何一个操作数为真，则其对运算无贡献
-                if left is True:
+                if left is True and b:
                     return right
-                if right is True:
+                if right is True and a:
                     return left
             elif op == '||':
+                a = True
+                b = True
                 # 可以隐式转bool的节点先转bool，并更新对应的判断参数，方便接下来基于常量的优化
                 if x is str or xi:
                     node.left = left = bool(left)
+                    a = True
                 elif x is List or x is Dict:
                     node.left = left = bool(left.val)
+                    a = True
                 if y is str or yi:
                     node.right = right = bool(right)
+                    b = True
                 elif y is List or y is Dict:
                     node.right = right = bool(right.val)
+                    b = True
                 # 任何一个操作数为真，整个 or 运算为真
                 if left is True or right is True:
                     node = True
                 # 任何一个操作数为假，则其对整个 or 运算无贡献
-                if left is False:
+                if left is False and b:
                     return right
-                if right is False:
+                if right is False and a:
                     return left
         elif t is If_stmt:
             # 对于 if 的condition,then,elif的condition,then和else的body一个个做处理
