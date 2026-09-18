@@ -296,6 +296,12 @@ while(true){
     print('get here')
 }
 print('i is ' + i)
+if(0 || 1){
+    print('or')
+}
+if(1 && 2){
+    print('and')
+}
 print('='*120)
 
 print('函数的递归')
