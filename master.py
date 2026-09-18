@@ -63,14 +63,22 @@ while True:
         ast = True
     elif line.startswith('run'):
         run = True
+    elif line.startswith('help'):
+        print('输入 ast [address] 可以生成address对应代码的.ast文件,若已有则会覆盖'
+              '\n输入 run [address] 可以运行对应代码的.ast文件，若无'
+              '对应.ast文件则先生成之然后运行\n'
+              'ast 时的address结尾可以为任意后缀(不可无后缀，具体文件须真实存在)\n'
+              'run 时的address结尾可以为任意后缀(不可无后缀，具体文件须真实存在)')
+        continue
     else:
+        print('无此指令，可输入help获取帮助')
         continue
     address = ''
     index = 3
     size = len(line)
     while index < size and line[index] == ' ':
         index += 1
-    if index < size and line[index] == '\"' or line[index] == '\'':
+    if index < size and (line[index] == '\"' or line[index] == '\''):
         op = line[index]
         index += 1
         while index < size and line[index] != op:
@@ -80,12 +88,16 @@ while True:
         while index < size and line[index] != ' ':
             address += line[index]
             index += 1
-    if ast:
-        get_ast(address)
-    elif run:
-        if os.path.splitext(address)[1] == '.ast':
-            run_ast(address)
-        else:
-            res = get_ast(address)
-            if res:
-                run_ast(res)
+    address = address.strip()
+    if not address:
+        print('address is empty!')
+    else:
+        if ast:
+            get_ast(address)
+        elif run:
+            if os.path.splitext(address)[1] == '.ast':
+                run_ast(address)
+            else:
+                res = get_ast(address)
+                if res:
+                    run_ast(res)
