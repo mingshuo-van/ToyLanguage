@@ -103,6 +103,43 @@ print(num())
 print(global_num)
 print('='*120)
 
+old_f = f
+fn outer(){
+    a = 1
+    while (a){
+        a = 0
+        print(a)
+        n = '十'
+    }
+    vars()
+    print(n)
+    fn inner(){
+        n := n
+        return n
+    }
+    return inner
+}
+f = outer()
+print(f())
+
+
+fn outer(){
+    n = -20
+    fn inner(){
+        if (1){
+            a = true
+            while (a){
+            a = false
+            if(1){ n:= n}
+            }
+        }
+        return n
+    }
+    return inner
+}
+print(outer()())
+f = old_f
+print('='*120)
 
 print('list 和 dict 的左值和右值使用，切片')
 a = e[0]
