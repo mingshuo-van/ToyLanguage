@@ -573,6 +573,67 @@ class VirtualMachine:
                 if t is Break_stmt or t is Continue_stmt or t is Return_stmt:
                     return flag
 
+    def really_record_nonlocal_left_variable_name(self, node):
+        """
+        实际对要处理的 := 节点做变量名的记录处理
+        :param node:
+        :return: None
+        """
+        name = node.left
+        if type(name) is Binary_expr and name.op == 'index':
+            while type(name) is Binary_expr:
+                name = name.left
+        search = self.cur_scope
+        while name.id not in search['id']:
+            if search != self.scope:
+                search = search['parent']
+            else:
+                raise KeyError(f'{name.id} is not a variable')
+        # 记录引用，供之后分析释放未引用变量占用的内存
+        search['be_quoted'][name.id] = None
+
+    def search_variable_in_while_and_if_by_recursive(self,node):
+        """
+        用来递归地寻找并记录在while和if中的 := 标记的变量名
+        :param node: while 或 if 语句
+        :return: None
+        """
+        t = type(node)
+        if t is If_stmt:
+            then = node.then
+            for i in then:
+                k = type(i)
+                if k is Binary_expr and i.op == ':=':
+                    self.really_record_nonlocal_left_variable_name(i)
+                elif k is If_stmt or k is While_stmt:
+                    self.search_variable_in_while_and_if_by_recursive(i)
+            if node.if_list:
+                for stmt in node.if_list:
+                    then = stmt.then
+                    for i in then:
+                        k = type(i)
+                        if k is Binary_expr and i.op == ':=':
+                            self.really_record_nonlocal_left_variable_name(i)
+                        elif k is If_stmt or k is While_stmt:
+                            self.search_variable_in_while_and_if_by_recursive(i)
+            if node.otherwise:
+                for i in node.otherwise:
+                    k = type(i)
+                    if k is Binary_expr and i.op == ':=':
+                        self.really_record_nonlocal_left_variable_name(i)
+                    elif k is If_stmt or k is While_stmt:
+                        self.search_variable_in_while_and_if_by_recursive(i)
+        elif t is While_stmt:
+            then = node.then
+            for i in then:
+                k = type(i)
+                if k is Binary_expr and i.op == ':=':
+                    self.really_record_nonlocal_left_variable_name(i)
+                elif k is If_stmt or k is While_stmt:
+                    self.search_variable_in_while_and_if_by_recursive(i)
+
+
+
     def call_define_stmt(self, node):
         """
         处理函数定义节点
@@ -585,21 +646,15 @@ class VirtualMachine:
         # 把当前函数记录在父级作用域
         self.cur_scope['id'][name.id] = f
         if self.cur_scope != self.scope:
+            # 只有当父级作用域不是全局作用域时才执行记录
             for i in body:
-                if type(i) is Binary_expr and i.op == ':=':
-                    # 寻找引用的父级作用域变量
-                    name = i.left
-                    if type(name) is Binary_expr and name.op == 'index':
-                        while type(name) is Binary_expr:
-                            name = name.left
-                    search = self.cur_scope
-                    while name.id not in search['id']:
-                        if search != self.scope:
-                            search = search['parent']
-                        else:
-                            raise KeyError(f'{name.id} is not a variable')
-                    # 记录引用，供之后分析释放未引用变量占用的内存
-                    search['be_quoted'][name.id] = None
+                t = type(i)
+                if t is Binary_expr and i.op == ':=':
+                    # 寻找并记录引用的父级作用域变量
+                    self.really_record_nonlocal_left_variable_name(i)
+                elif t is While_stmt or t is If_stmt:
+                    # 递归处理while 或 if 语句中对父级作用域变量的引用
+                    self.search_variable_in_while_and_if_by_recursive(i)
 
     def switch_call_scope_and_binds_arguments(self, name, vars, search):
         """
