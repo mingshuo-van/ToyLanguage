@@ -138,6 +138,21 @@ fn outer(){
     return inner
 }
 print(outer()())
+
+fn outer(){
+    n = -8
+    fn inner(){
+        fn inner_inner(){
+            n := n
+            x = n
+            return x
+        }
+        return inner_inner
+    }
+    return inner
+}
+f = outer()
+print(f()())
 f = old_f
 print('='*120)
 
@@ -301,6 +316,16 @@ if(0 || 1){
 }
 if(1 && 2){
     print('and')
+}
+flag = 2
+if(0){
+    print(0)
+}elif(flag == 1){
+    print(1)
+}elif(flag == 2){
+    print(2)
+}else{
+    print(3)
 }
 print('='*120)
 
