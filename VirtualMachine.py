@@ -592,7 +592,7 @@ class VirtualMachine:
         # 记录引用，供之后分析释放未引用变量占用的内存
         search['be_quoted'][name.id] = None
 
-    def search_variable_in_while_and_if_by_recursive(self,node):
+    def search_variable_in_while_if_define_stmt(self, node):
         """
         用来递归地寻找并记录在while和if中的 := 标记的变量名
         :param node: while 或 if 语句
@@ -605,8 +605,8 @@ class VirtualMachine:
                 k = type(i)
                 if k is Binary_expr and i.op == ':=':
                     self.really_record_nonlocal_left_variable_name(i)
-                elif k is If_stmt or k is While_stmt:
-                    self.search_variable_in_while_and_if_by_recursive(i)
+                elif k is If_stmt or k is While_stmt or k is Call_define_stmt:
+                    self.search_variable_in_while_if_define_stmt(i)
             if node.if_list:
                 for stmt in node.if_list:
                     then = stmt.then
@@ -614,23 +614,32 @@ class VirtualMachine:
                         k = type(i)
                         if k is Binary_expr and i.op == ':=':
                             self.really_record_nonlocal_left_variable_name(i)
-                        elif k is If_stmt or k is While_stmt:
-                            self.search_variable_in_while_and_if_by_recursive(i)
+                        elif k is If_stmt or k is While_stmt or k is Call_define_stmt:
+                            self.search_variable_in_while_if_define_stmt(i)
             if node.otherwise:
                 for i in node.otherwise:
                     k = type(i)
                     if k is Binary_expr and i.op == ':=':
                         self.really_record_nonlocal_left_variable_name(i)
-                    elif k is If_stmt or k is While_stmt:
-                        self.search_variable_in_while_and_if_by_recursive(i)
+                    elif k is If_stmt or k is While_stmt or k is Call_define_stmt:
+                        self.search_variable_in_while_if_define_stmt(i)
         elif t is While_stmt:
             then = node.then
             for i in then:
                 k = type(i)
                 if k is Binary_expr and i.op == ':=':
                     self.really_record_nonlocal_left_variable_name(i)
-                elif k is If_stmt or k is While_stmt:
-                    self.search_variable_in_while_and_if_by_recursive(i)
+                elif k is If_stmt or k is While_stmt or k is Call_define_stmt:
+                    self.search_variable_in_while_if_define_stmt(i)
+        elif t is Call_define_stmt:
+            body = node.body
+            for i in body:
+                k = type(i)
+                if k is Binary_expr and i.op == ':=':
+                    self.really_record_nonlocal_left_variable_name(i)
+                elif k is If_stmt or k is While_stmt or k is Call_define_stmt:
+                    self.search_variable_in_while_if_define_stmt(i)
+
 
 
 
@@ -652,9 +661,9 @@ class VirtualMachine:
                 if t is Binary_expr and i.op == ':=':
                     # 寻找并记录引用的父级作用域变量
                     self.really_record_nonlocal_left_variable_name(i)
-                elif t is While_stmt or t is If_stmt:
-                    # 递归处理while 或 if 语句中对父级作用域变量的引用
-                    self.search_variable_in_while_and_if_by_recursive(i)
+                elif t is While_stmt or t is If_stmt or t is Call_define_stmt:
+                    # 递归处理while if call_define 语句中对父级作用域变量的引用
+                    self.search_variable_in_while_if_define_stmt(i)
 
     def switch_call_scope_and_binds_arguments(self, name, vars, search):
         """
