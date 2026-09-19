@@ -65,8 +65,8 @@ while True:
         run = True
     elif line.startswith('help'):
         print('输入 ast [address] 可以生成address对应代码的.ast文件,若已有则会覆盖'
-              '\n输入 run [address] 可以运行对应代码的.ast文件，若无'
-              '对应.ast文件则先生成之然后运行\n'
+              '\n输入 run [address] 可以运行address对应的.ast文件，若非'
+              '对应.ast文件则把address对应文件作为代码先生成.ast文件然后运行\n'
               'ast 时的address结尾可以为任意后缀(不可无后缀，具体文件须真实存在)\n'
               'run 时的address结尾可以为任意后缀(不可无后缀，具体文件须真实存在)')
         continue
