@@ -113,6 +113,8 @@ class Parser:
         elif t == 'remove':
             # 返回定义的remove语句
             return self.remove_stmt()
+        elif t == 'try':
+            return self.try_stmt()
         else:
             # 其他情况，当表达式处理
             return self.assign()
@@ -190,6 +192,11 @@ class Parser:
                 vars.append(self.assign())
         self.expect(')')
         return vars
+
+    def try_stmt(self):
+        self.expect('try')
+        self.expect('{')
+        
 
     def factor(self):
         token = self.tokens[self.pos] if self.pos < self.length else None

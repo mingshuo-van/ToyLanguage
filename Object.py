@@ -16,7 +16,7 @@ assign -> id = assign | id := assign | id => assign | id ?= assign | logic_or
 
 program -> stmt_list
 
-stmt -> if_stmt | while_stmt | call_define_stmt | call_stmt | assign | remove_stmt | builtins_stmt
+stmt -> if_stmt | while_stmt | call_define_stmt | call_stmt | assign | remove_stmt | builtins_stmt | try_stmt
 
 stmt_list -> stmt*
 
@@ -223,6 +223,16 @@ class Return_stmt(Statement):
     def __repr__(self):
         return f'(return {self.val})'
 
+class Try_stmt(Statement):
+    """
+    try catch 语句
+    """
+
+    def __init(self,try_body,catch_list=None,finally_body=None):
+        self.try_body = try_body
+        self.catch_list = catch_list
+        self.finally_body = finally_body
+
 
 class Exit_Error(Exception):
     """
@@ -232,3 +242,18 @@ class Exit_Error(Exception):
 
     def __init__(self, val):
         super().__init__(val)
+
+class Lang_Err(Expression):
+    """
+    lang Exception，用于语言级报错
+    exception_name是错误类型
+    exception_description是错误描述
+    """
+
+    def __init__(self,exception_name,exception_description):
+        self.name = exception_name
+        self.description = exception_description
+        super().__init__(exception_name,exception_description)
+
+    def __str__(self):
+        return f'{self.name}:{self.description}'

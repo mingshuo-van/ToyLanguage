@@ -41,7 +41,7 @@ class Tokenizer:
             self.valid_variable_chars.add(chr(y + i))
         # 内置关键字
         self.inner = {'while', 'true', 'false', 'if', 'elif', 'else', 'fn', 'break', 'continue', 'return', 'remove',
-                      'null',
+                      'null','try','catch','finally',
                       '==', '!=', '>=', '<=', '&&', '||', '<<', '>>', '**', ':=', '=>', '?=', '//', '::',
                       '+', '-', '*', '/', '%', '^', '&', '|', '~', '!', '<', '>', '(', ')', '{', '}', '[', ']', ',',
                       '.', '=', ':'}
