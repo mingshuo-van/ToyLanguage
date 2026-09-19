@@ -592,6 +592,18 @@ class VirtualMachine:
         # 记录引用，供之后分析释放未引用变量占用的内存
         search['be_quoted'][name.id] = None
 
+    def really_process_every_sentence(self, sentence):
+        """
+        提取出的用于递归记录时具体对每一个语句的处理逻辑
+        :param sentence:每一个具体的语句节点
+        :return: None
+        """
+        k = type(sentence)
+        if k is Binary_expr and sentence.op == ':=':
+            self.really_record_nonlocal_left_variable_name(sentence)
+        elif k is If_stmt or k is While_stmt or k is Call_define_stmt:
+            self.search_variable_in_while_if_define_stmt(sentence)
+
     def search_variable_in_while_if_define_stmt(self, node):
         """
         用来递归地寻找并记录在while if 和 call_define 中的 := 标记的变量名
@@ -602,43 +614,23 @@ class VirtualMachine:
         if t is If_stmt:
             then = node.then
             for i in then:
-                k = type(i)
-                if k is Binary_expr and i.op == ':=':
-                    self.really_record_nonlocal_left_variable_name(i)
-                elif k is If_stmt or k is While_stmt or k is Call_define_stmt:
-                    self.search_variable_in_while_if_define_stmt(i)
+                self.really_process_every_sentence(i)
             if node.if_list:
                 for stmt in node.if_list:
                     then = stmt.then
                     for i in then:
-                        k = type(i)
-                        if k is Binary_expr and i.op == ':=':
-                            self.really_record_nonlocal_left_variable_name(i)
-                        elif k is If_stmt or k is While_stmt or k is Call_define_stmt:
-                            self.search_variable_in_while_if_define_stmt(i)
+                        self.really_process_every_sentence(i)
             if node.otherwise:
                 for i in node.otherwise:
-                    k = type(i)
-                    if k is Binary_expr and i.op == ':=':
-                        self.really_record_nonlocal_left_variable_name(i)
-                    elif k is If_stmt or k is While_stmt or k is Call_define_stmt:
-                        self.search_variable_in_while_if_define_stmt(i)
+                    self.really_process_every_sentence(i)
         elif t is While_stmt:
             then = node.then
             for i in then:
-                k = type(i)
-                if k is Binary_expr and i.op == ':=':
-                    self.really_record_nonlocal_left_variable_name(i)
-                elif k is If_stmt or k is While_stmt or k is Call_define_stmt:
-                    self.search_variable_in_while_if_define_stmt(i)
+                self.really_process_every_sentence(i)
         elif t is Call_define_stmt:
             body = node.body
             for i in body:
-                k = type(i)
-                if k is Binary_expr and i.op == ':=':
-                    self.really_record_nonlocal_left_variable_name(i)
-                elif k is If_stmt or k is While_stmt or k is Call_define_stmt:
-                    self.search_variable_in_while_if_define_stmt(i)
+                self.really_process_every_sentence(i)
 
 
 
