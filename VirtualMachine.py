@@ -594,7 +594,7 @@ class VirtualMachine:
 
     def search_variable_in_while_if_define_stmt(self, node):
         """
-        用来递归地寻找并记录在while和if中的 := 标记的变量名
+        用来递归地寻找并记录在while if 和 call_define 中的 := 标记的变量名
         :param node: while 或 if 语句
         :return: None
         """
