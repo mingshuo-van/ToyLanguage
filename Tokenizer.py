@@ -10,12 +10,14 @@ class Token:
     否则，type in {int,float,str,id}
     """
 
-    def __init__(self, type, val):
+    def __init__(self, type, val, row=-1, col=-1):
         self.type = type
         self.val = val
+        self.row = row
+        self.col = col
 
     def __repr__(self):
-        return f'type:{self.type}  val:{self.val}'
+        return f'type:{self.type}  val:{self.val} row:{self.row} col:{self.col}'
 
 
 class Tokenizer:
@@ -41,7 +43,7 @@ class Tokenizer:
             self.valid_variable_chars.add(chr(y + i))
         # 内置关键字
         self.inner = {'while', 'true', 'false', 'if', 'elif', 'else', 'fn', 'break', 'continue', 'return', 'remove',
-                      'null','try','catch','finally',
+                      'null', 'try', 'catch', 'finally',
                       '==', '!=', '>=', '<=', '&&', '||', '<<', '>>', '**', ':=', '=>', '?=', '//', '::',
                       '+', '-', '*', '/', '%', '^', '&', '|', '~', '!', '<', '>', '(', ')', '{', '}', '[', ']', ',',
                       '.', '=', ':'}
@@ -232,6 +234,8 @@ class Tokenizer:
         if cur is None:
             return None
         kind = None
+        row = self.index
+        col = self.pos
         # 这里用type仅仅是因为 kind is type 操作比 kind == "str" 更便宜而已
         # 用的具体类型只是随便选的而已
         if 'a' <= cur <= 'z' or 'A' <= cur <= 'Z':
@@ -243,10 +247,10 @@ class Tokenizer:
         elif cur in set('(){}[],.'):
             # 检测括号
             self.consume()
-            return Token(cur, cur)
+            return Token(cur, cur, row, col)
         if cur == '\'' or cur == '\"':
             # 检测字符串
-            return Token('str', self.get_whole_couple_block(cur)[1:-1])
+            return Token('str', self.get_whole_couple_block(cur)[1:-1], row, col)
         while cur and cur != ' ':
             if cur == '#':
                 self.next_line()
@@ -275,13 +279,13 @@ class Tokenizer:
                 # 检测内置运算符，内置运算符之间必须没有空格，如== **
                 break
         if res in self.inner:
-            return Token(res, res)
+            return Token(res, res, row, col)
         if self.is_id(res):
-            return Token('id', res)
+            return Token('id', res, row, col)
         if self.is_int(res):
-            return Token('int', res)
+            return Token('int', res, row, col)
         if self.is_float(res):
-            return Token('float', res)
+            return Token('float', res, row, col)
 
     def tokenize(self):
         """
