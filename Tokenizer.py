@@ -15,7 +15,7 @@ class Token:
         self.val = val
 
     def __repr__(self):
-        return f'{self.type}  {self.val}'
+        return f'type:{self.type}  val:{self.val}'
 
 
 class Tokenizer:
