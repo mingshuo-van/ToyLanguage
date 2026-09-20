@@ -196,6 +196,25 @@ class Parser:
     def try_stmt(self):
         self.expect('try')
         self.expect('{')
+        try_body = self.stmt_list()
+        self.expect('}')
+        catch_list = []
+        while self.pos < self.length and self.tokens[self.pos].type == 'catch':
+            self.consume()
+            self.expect('(')
+            condition = self.assign()
+            self.expect(')')
+            self.expect('{')
+            then = self.stmt_list()
+            self.expect('}')
+            catch_list.append(If_stmt(condition,then))
+        finally_body = None
+        if self.pos < self.length and self.tokens[self.pos].type == 'finally':
+            self.expect('{')
+            finally_body = self.stmt_list()
+            self.expect('}')
+        node = Try_stmt(try_body,catch_list,finally_body)
+        return node
         
 
     def factor(self):
