@@ -243,7 +243,7 @@ class Exit_Error(Exception):
     def __init__(self, val):
         super().__init__(val)
 
-class Lang_Err(Expression):
+class Lang_Err(Exception):
     """
     lang Exception，用于语言级报错
     exception_name是错误类型
