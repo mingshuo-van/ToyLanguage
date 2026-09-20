@@ -210,6 +210,7 @@ class Parser:
             catch_list.append(If_stmt(condition,then))
         finally_body = None
         if self.pos < self.length and self.tokens[self.pos].type == 'finally':
+            self.consume()
             self.expect('{')
             finally_body = self.stmt_list()
             self.expect('}')
