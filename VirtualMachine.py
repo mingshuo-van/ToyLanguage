@@ -410,7 +410,7 @@ class VirtualMachine:
             if name.id not in scope['id']:
                 if tolerance:
                     return default
-                raise KeyError(f'{name.id} not a variable in local scope')
+                raise Lang_Err('NameError',f'{name.id} not a variable in local scope')
             return scope['id'][name.id]
         while name.id not in scope['id']:
             # 寻找有对应标识符的作用域
@@ -418,7 +418,7 @@ class VirtualMachine:
             if scope != self.scope:
                 scope = scope['parent']
             elif not tolerance:
-                raise KeyError(f'{name.id} not a variable')
+                raise Lang_Err('NameError',f'{name.id} not a variable')
             else:
                 return default
         return scope['id'][name.id]
@@ -699,7 +699,7 @@ class VirtualMachine:
         if search == self.builtins_scope:
             # 当调用内置函数时走快速通道
             if name.id not in search:
-                raise KeyError(f'{name.id} is not a valid function name')
+                raise Lang_Err('NameError',f'{name.id} not is a valid function name')
         else:
             # 按照作用域链查找函数定义
             while name.id not in search['id']:
@@ -709,7 +709,7 @@ class VirtualMachine:
                     if name.id in self.builtins_scope:
                         return None
                     else:
-                        raise KeyError(f'{name.id} not is a valid function name')
+                        raise Lang_Err('NameError',f'{name.id} not is a valid function name')
         f = search[name.id] if search == self.builtins_scope else search['id'][name.id]
         # 创建当前要执行函数的局部作用域
         local_scope = {'parent': self.cur_scope if search == self.builtins_scope else f.parent, 'id': {},
@@ -772,7 +772,7 @@ class VirtualMachine:
         """
         name, vars = node.name, node.vars
         if name.id not in self.builtins_scope:
-            raise KeyError(f'{name.id} not a inner function')
+            raise Lang_Err('NameError',f'{name.id} not a inner function')
         old_scope = self.cur_scope
         self.switch_call_scope_and_binds_arguments(name, vars, self.builtins_scope)
         key = name.id
