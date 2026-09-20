@@ -225,7 +225,7 @@ class VirtualMachine:
                     Dict: self.transform_iterable_object_and_calc_inner_node,
                     Try_stmt: self.try_stmt
                     }
-        
+
     def try_stmt(self,node):
         """
         执行try catch finally 相关代码的函数
@@ -533,11 +533,14 @@ class VirtualMachine:
         :param node: 要处理的双目运算节点
         :return: 可能的节点返回值 或 None
         """
-        op, left, right = node.op, node.left, node.right
-        if op == '?=':
-            op = node.op = '='
-            right = node.right = self.run(right)
-        return self.binary_op[op](left, right)
+        try:
+            op, left, right = node.op, node.left, node.right
+            if op == '?=':
+                op = node.op = '='
+                right = node.right = self.run(right)
+            return self.binary_op[op](left, right)
+        except ZeroDivisionError as e:
+            raise Lang_Err('ZeroDivisionError',str(e))
 
     def while_stmt(self, node):
         """
