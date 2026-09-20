@@ -222,8 +222,36 @@ class VirtualMachine:
                     Id: self.read_variable,
                     Builtins_stmt: self.builtins_stmt,
                     List: self.transform_iterable_object_and_calc_inner_node,
-                    Dict: self.transform_iterable_object_and_calc_inner_node
+                    Dict: self.transform_iterable_object_and_calc_inner_node,
+                    Try_stmt: self.try_stmt
                     }
+        
+    def try_stmt(self,node):
+        """
+        执行try catch finally 相关代码的函数
+        :param node: try_stmt 节点
+        :return: None
+        """
+        try_body ,catch_list, finally_body = node.try_body, node.catch_list,node.finally_body
+        err_dict = {}
+        if catch_list:
+            for i in catch_list:
+                err_dict[i.condition] = i.then
+        try:
+            if try_body:
+                for i in try_body:
+                    self.run(i)
+        except Lang_Err as e:
+            name = e.args[0]
+            if name in err_dict:
+                for i in err_dict[name]:
+                    self.run(i)
+            else:
+                raise e
+        finally:
+            if finally_body:
+                for i in finally_body:
+                    self.run(i)
 
     def inner_exit(self):
         raise Exit_Error(self.read_variable(Id('num'), tolerance=True, default=0, only_local=True))
