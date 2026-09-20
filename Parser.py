@@ -41,13 +41,13 @@ class Parser:
         """
         token = self.tokens[self.pos] if self.pos < self.length else None
         if token is None:
-            raise TypeError(f'unexpected token {token}')
+            raise Lang_Err('InvalidToken',f'unexpected token {token}')
         self.consume()
         if val is None:
             if not token.type == type:
-                raise TypeError(f'unexpected token {token}')
+                raise Lang_Err('InvalidToken',f'unexpected token {token}')
         elif not (token.type == type and token.val == val):
-            raise TypeError(f'unexpected token {token}')
+            raise Lang_Err('InvalidToken',f'unexpected token {token}')
         return token
 
     def program(self):
@@ -248,7 +248,7 @@ class Parser:
         elif token.type == '{':
             node = self.parse_dict()
         else:
-            raise TypeError(f'unexpected {token}')
+            raise Lang_Err('InvalidToken',f'unexpected token {token}')
         while self.pos < self.length and self.tokens[self.pos].type == '[':
             self.consume()
             is_slice = False
