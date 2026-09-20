@@ -228,7 +228,7 @@ class Try_stmt(Statement):
     try catch 语句
     """
 
-    def __init(self,try_body,catch_list=None,finally_body=None):
+    def __init__(self,try_body,catch_list=None,finally_body=None):
         self.try_body = try_body
         self.catch_list = catch_list
         self.finally_body = finally_body
