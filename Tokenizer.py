@@ -1,5 +1,7 @@
 import sys
 
+from Object import Lang_Err
+
 sys.setrecursionlimit(10000)
 sys.set_int_max_str_digits(0)
 
@@ -130,9 +132,11 @@ class Tokenizer:
         self.pos = 0
         self.cnt = len(self.txt[self.index]) if self.index < self.length else 0
 
-    def is_id(self, s: str):
+    def is_id(self, s: str,row=-1,col=-1):
         """
         判断传入的字符串是否是合法的标识符
+        :param col: 报错用定位
+        :param row: 报错用定位
         :param s: 要被判断的字符串
         :return: 是合法的字符串则返回True，否则返回False
         """
@@ -145,12 +149,14 @@ class Tokenizer:
         for i in range(1, len(s)):
             if s[i] not in self.valid_variable_chars:
                 # 只要出现了不合法的字符，就说明这个字符串不是一个合法的标识符
-                return False
+                raise Lang_Err('InvalidIdentifier',f'for {s} row:{row} col:{col}')
         return True
 
-    def is_int(self, s: str):
+    def is_int(self, s: str,row=-1,col=-1):
         """
         判断传入的字符串是否是合法的整型
+        :param col: 报错用定位
+        :param row: 报错用定位
         :param s: 要被判断的字符串
         :return: 是->True,不是->False
         """
@@ -160,12 +166,17 @@ class Tokenizer:
         for i in s:
             if i not in self.digit_int:
                 # 出现任何不属于合法整型的字符，就不是合法的整型
+                if i not in {'e','E','_','.'}:
+                    # 若也不属于合法浮点型，则报错
+                    raise Lang_Err('InvalidInt',f'for {s} row:{row} col:{col}')
                 return False
         return True
 
-    def is_float(self, s: str):
+    def is_float(self, s: str,row=-1,col=-1):
         """
         判断传入的字符串是否是合法的浮点型
+        :param col: 报错用定位
+        :param row: 报错用定位
         :param s: 要被判断的字符串
         :return: 是->True,不是->False
         """
@@ -174,29 +185,36 @@ class Tokenizer:
             return False
         point = False
         e = False
-        for i in s:
+        last_index = len(s) - 1
+        for index,i in enumerate(s):
             if i not in self.digit_float:
-                # 出现任何不属于合法整型的字符，就不是合法的整型
-                return False
+                # 出现任何不属于合法浮点型的字符，就不是合法的浮点型
+                raise Lang_Err('InvalidFloat',f'for {s} row:{row} col:{col}')
             if i == '.':
                 if not point:
                     # 首次出现小数点，记录
                     point = True
+                    if index == last_index:
+                        raise Lang_Err('InvalidFloat', f'point is the last char for {s} row:{row} col:{col}')
                 else:
                     # 出现多次小数点，不合法
-                    raise ValueError(f'two point in float {s}')
+                    raise Lang_Err('InvalidFloat', f'two point for {s} row:{row} col:{col}')
             if i == 'e' or i == 'E':
                 if not e:
                     # 首次出现科学计数法符号
                     e = True
+                    if index == last_index:
+                        raise Lang_Err('InvalidFloat', f'{i} is the last char for {s} row:{row} col:{col}')
                 else:
                     # 科学计数法符号只能出现一次
-                    raise ValueError(f'two e|E in float {s}')
+                    raise Lang_Err('InvalidFloat', f'two e|E for {s} row:{row} col:{col}')
         return True
 
-    def get_whole_couple_block(self, flag):
+    def get_whole_couple_block(self, flag, row=-1,col=-1):
         """
         当遇到成对的符号时，调用获得整个字符串，如 "" ,符号必须一样
+        :param col: 报错用定位
+        :param row: 报错用定位
         :param flag: 成对的符号中的其中一个
         :return: 获得的包括成对符号本身的字符串
         """
@@ -207,18 +225,18 @@ class Tokenizer:
             while self.cur() is None:
                 self.consume()
                 if self.index >= self.length:
-                    raise TypeError(f'the counts of {flag} must be a even {res}')
+                    raise Lang_Err('InvalidStr',f'the counts of {flag} must be a even {res} row:{row} col:{col}')
             if self.cur() == flag:
                 count += 1
             if self.cur() == '\\':
-                # 当遇到转义符号时，替换合法的转义符号，否则，吃掉转义符号继续进行
-                if self.peek() not in set("\'\";\\"):
-                    res += {'n': '\n', 't': '\t', 'r': '\r'}[self.peek()]
+                # 当遇到转义符号时，替换合法的转义符号，否则，报错
+                if self.peek() in set("\'\";\\nbtr"):
+                    res += {'n': '\n', 't': '\t', 'r': '\r', 'b': '\b','\'':'\'','\"':'\"','\\':'\\'}[self.peek()]
                     self.consume()
                     self.consume()
                     continue
                 else:
-                    self.consume()
+                    raise Lang_Err('InvalidStr', f'don\'t support \\{self.peek()} row:{row} col:{col}')
             res += self.cur()
             self.consume()
         return res
@@ -250,8 +268,8 @@ class Tokenizer:
             return Token(cur, cur, row, col)
         if cur == '\'' or cur == '\"':
             # 检测字符串
-            return Token('str', self.get_whole_couple_block(cur)[1:-1], row, col)
-        while cur and cur != ' ':
+            return Token('str', self.get_whole_couple_block(cur,row,col)[1:-1], row, col)
+        while cur and cur != ' ' and cur != '\t':
             if cur == '#':
                 self.next_line()
                 break
@@ -280,11 +298,11 @@ class Tokenizer:
                 break
         if res in self.inner:
             return Token(res, res, row, col)
-        if self.is_id(res):
+        if (kind is str or kind is bool) and self.is_id(res,row,col):
             return Token('id', res, row, col)
-        if self.is_int(res):
+        if kind is int and self.is_int(res,row, col):
             return Token('int', res, row, col)
-        if self.is_float(res):
+        if kind is int and self.is_float(res):
             return Token('float', res, row, col)
 
     def tokenize(self):
