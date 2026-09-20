@@ -111,12 +111,12 @@ class Tokenizer:
 
     def jump(self):
         """
-        跳过空格
+        跳过空格和制表符
         :return:None
         """
         if self.cur() is None:
             self.next_line()
-        while self.cur() == ' ':
+        while self.cur() == ' ' or self.cur() == '\t':
             self.consume()
 
     def next_line(self):
