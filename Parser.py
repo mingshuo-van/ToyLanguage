@@ -41,13 +41,13 @@ class Parser:
         """
         token = self.tokens[self.pos] if self.pos < self.length else None
         if token is None:
-            raise TypeError(f'unexpected token {token}')
+            raise Lang_Err('InvalidToken',f'unexpected token {token}')
         self.consume()
         if val is None:
             if not token.type == type:
-                raise TypeError(f'unexpected token {token}')
+                raise Lang_Err('InvalidToken',f'unexpected token {token}')
         elif not (token.type == type and token.val == val):
-            raise TypeError(f'unexpected token {token}')
+            raise Lang_Err('InvalidToken',f'unexpected token {token}')
         return token
 
     def program(self):
@@ -113,6 +113,8 @@ class Parser:
         elif t == 'remove':
             # 返回定义的remove语句
             return self.remove_stmt()
+        elif t == 'try':
+            return self.try_stmt()
         else:
             # 其他情况，当表达式处理
             return self.assign()
@@ -191,6 +193,31 @@ class Parser:
         self.expect(')')
         return vars
 
+    def try_stmt(self):
+        self.expect('try')
+        self.expect('{')
+        try_body = self.stmt_list()
+        self.expect('}')
+        catch_list = []
+        while self.pos < self.length and self.tokens[self.pos].type == 'catch':
+            self.consume()
+            self.expect('(')
+            condition = self.assign()
+            self.expect(')')
+            self.expect('{')
+            then = self.stmt_list()
+            self.expect('}')
+            catch_list.append(If_stmt(condition,then))
+        finally_body = None
+        if self.pos < self.length and self.tokens[self.pos].type == 'finally':
+            self.consume()
+            self.expect('{')
+            finally_body = self.stmt_list()
+            self.expect('}')
+        node = Try_stmt(try_body,catch_list,finally_body)
+        return node
+        
+
     def factor(self):
         token = self.tokens[self.pos] if self.pos < self.length else None
         self.consume()
@@ -222,7 +249,7 @@ class Parser:
         elif token.type == '{':
             node = self.parse_dict()
         else:
-            raise TypeError(f'unexpected {token}')
+            raise Lang_Err('InvalidToken',f'unexpected token {token}')
         while self.pos < self.length and self.tokens[self.pos].type == '[':
             self.consume()
             is_slice = False

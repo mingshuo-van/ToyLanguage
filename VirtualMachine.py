@@ -59,7 +59,7 @@ def push(box, idx):
     :return: None
     """
     if type(box) is not list:
-        raise KeyError(f'{box} must be list')
+        raise Lang_Err('TypeError',f'{box} must be list')
     box.append(idx)
 
 
@@ -222,8 +222,36 @@ class VirtualMachine:
                     Id: self.read_variable,
                     Builtins_stmt: self.builtins_stmt,
                     List: self.transform_iterable_object_and_calc_inner_node,
-                    Dict: self.transform_iterable_object_and_calc_inner_node
+                    Dict: self.transform_iterable_object_and_calc_inner_node,
+                    Try_stmt: self.try_stmt
                     }
+
+    def try_stmt(self,node):
+        """
+        执行try catch finally 相关代码的函数
+        :param node: try_stmt 节点
+        :return: None
+        """
+        try_body ,catch_list, finally_body = node.try_body, node.catch_list,node.finally_body
+        err_dict = {}
+        if catch_list:
+            for i in catch_list:
+                err_dict[i.condition] = i.then
+        try:
+            if try_body:
+                for i in try_body:
+                    self.run(i)
+        except Lang_Err as e:
+            name = e.args[0]
+            if name == '*' or name in err_dict:
+                for i in err_dict[name]:
+                    self.run(i)
+            else:
+                raise e
+        finally:
+            if finally_body:
+                for i in finally_body:
+                    self.run(i)
 
     def inner_exit(self):
         raise Exit_Error(self.read_variable(Id('num'), tolerance=True, default=0, only_local=True))
@@ -382,7 +410,7 @@ class VirtualMachine:
             if name.id not in scope['id']:
                 if tolerance:
                     return default
-                raise KeyError(f'{name.id} not a variable in local scope')
+                raise Lang_Err('NameError',f'{name.id} not a variable in local scope')
             return scope['id'][name.id]
         while name.id not in scope['id']:
             # 寻找有对应标识符的作用域
@@ -390,7 +418,7 @@ class VirtualMachine:
             if scope != self.scope:
                 scope = scope['parent']
             elif not tolerance:
-                raise KeyError(f'{name.id} not a variable')
+                raise Lang_Err('NameError',f'{name.id} not a variable')
             else:
                 return default
         return scope['id'][name.id]
@@ -456,7 +484,7 @@ class VirtualMachine:
             if scope != self.scope:
                 scope = scope['parent']
             else:
-                raise KeyError(f'the variable called {name.id} not in parent scope')
+                raise Lang_Err('NameError',f'the variable called {name.id} not in parent scope')
             # 适配write_variable的逻辑，传入未拆分的原始Binary_expr节点
         return self.write_variable(name_origin, node, scope)
 
@@ -471,7 +499,7 @@ class VirtualMachine:
         while type(name) is Binary_expr:
             name = name.left
         if name.id not in self.scope['id']:
-            raise KeyError(f'the variable called {name.id} not in global scope')
+            raise Lang_Err('NameError',f'the variable called {name.id} not in global scope')
         return self.write_variable(name_origin, node, self.scope)
 
     def unary(self, node):
@@ -485,7 +513,10 @@ class VirtualMachine:
             if val.id in self.cur_scope['id']:
                 self.cur_scope['id'].pop(val.id)
         else:
-            return self.unary_op[op](val)
+            try:
+                return self.unary_op[op](val)
+            except ValueError as e:
+                raise Lang_Err(e.__class__.__name__,str(e))
 
     def index(self, left, right):
         """
@@ -505,11 +536,14 @@ class VirtualMachine:
         :param node: 要处理的双目运算节点
         :return: 可能的节点返回值 或 None
         """
-        op, left, right = node.op, node.left, node.right
-        if op == '?=':
-            op = node.op = '='
-            right = node.right = self.run(right)
-        return self.binary_op[op](left, right)
+        try:
+            op, left, right = node.op, node.left, node.right
+            if op == '?=':
+                op = node.op = '='
+                right = node.right = self.run(right)
+            return self.binary_op[op](left, right)
+        except (ZeroDivisionError,TypeError,ValueError,IndexError,KeyError) as e:
+            raise Lang_Err(e.__class__.__name__,str(e))
 
     def while_stmt(self, node):
         """
@@ -588,7 +622,7 @@ class VirtualMachine:
             if search != self.scope:
                 search = search['parent']
             else:
-                raise KeyError(f'{name.id} is not a variable')
+                raise Lang_Err('NameError',f'{name.id} is not a variable')
         # 记录引用，供之后分析释放未引用变量占用的内存
         search['be_quoted'][name.id] = None
 
@@ -668,7 +702,7 @@ class VirtualMachine:
         if search == self.builtins_scope:
             # 当调用内置函数时走快速通道
             if name.id not in search:
-                raise KeyError(f'{name.id} is not a valid function name')
+                raise Lang_Err('NameError',f'{name.id} not is a valid function name')
         else:
             # 按照作用域链查找函数定义
             while name.id not in search['id']:
@@ -678,12 +712,15 @@ class VirtualMachine:
                     if name.id in self.builtins_scope:
                         return None
                     else:
-                        raise KeyError(f'{name.id} not is a valid function name')
+                        raise Lang_Err('NameError',f'{name.id} not is a valid function name')
         f = search[name.id] if search == self.builtins_scope else search['id'][name.id]
         # 创建当前要执行函数的局部作用域
-        local_scope = {'parent': self.cur_scope if search == self.builtins_scope else f.parent, 'id': {},
-                       'be_quoted': {}
-                       }
+        try:
+            local_scope = {'parent': self.cur_scope if search == self.builtins_scope else f.parent, 'id': {},
+                           'be_quoted': {}
+                           }
+        except AttributeError:
+            raise Lang_Err('TypeError',f'{type(f).__name__} is not a Func')
         # 进行形参实参绑定
         for key, val in zip(f.vars, vars):
             self.write_local_variable(key, self.run(val), local_scope)
@@ -741,11 +778,14 @@ class VirtualMachine:
         """
         name, vars = node.name, node.vars
         if name.id not in self.builtins_scope:
-            raise KeyError(f'{name.id} not a inner function')
+            raise Lang_Err('NameError',f'{name.id} not a inner function')
         old_scope = self.cur_scope
         self.switch_call_scope_and_binds_arguments(name, vars, self.builtins_scope)
         key = name.id
-        res = self.func[key]()
+        try:
+            res = self.func[key]()
+        except (ValueError,FileNotFoundError,FileExistsError,PermissionError,IsADirectoryError,NotADirectoryError) as e:
+            raise Lang_Err(e.__class__.__name__,str(e))
         # 分析可能的闭包情况，当前内置函数应该无闭包实现
         # 但保留，保持和call_stmt的对称
         be_quoted = self.cur_scope['be_quoted']
