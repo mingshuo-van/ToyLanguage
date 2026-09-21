@@ -4,6 +4,10 @@ from time import time
 from random import random, seed, randrange
 import sys
 
+# 这是给字典的键值对迭代的迭代器类型，专门保存起来是为了方便后续inner_next某些操作
+iter_item_type = type(iter({}.items()))
+iter_key_type = type(iter({}))
+iter_value_type = type(iter({}.values()))
 
 def inner_str(object):
     """
@@ -62,10 +66,6 @@ def push(box, idx):
     if type(box) is not list:
         raise Lang_Err('TypeError', f'{box} must be list')
     box.append(idx)
-
-
-# 这是给字典的键值对迭代的迭代器类型，专门保存起来是为了方便后续inner_next某些操作
-iter_item_type = type(iter({}.items()))
 
 
 class IterEnd:
@@ -216,8 +216,8 @@ class VirtualMachine:
                           }
         # 供self.run函数短路返回的类型集合
         self.kind = {int, float, str, bool, list, dict, type(None), iter_item_type,
-                     type(iter({})), type(iter({}.values())), Return_stmt, Break_stmt, Continue_stmt,
-                     type(sys.__stdin__), type(IterEnd), Func, Lang_Err}
+                     iter_key_type, iter_value_type, Return_stmt, Break_stmt, Continue_stmt,
+                     type(sys.__stdin__), IterEnd, Func, Lang_Err}
         # self.fun路由表
         self.ret = {Unary_expr: self.unary,
                     Binary_expr: self.binary,
