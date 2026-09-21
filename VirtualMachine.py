@@ -243,8 +243,11 @@ class VirtualMachine:
                     self.run(i)
         except Lang_Err as e:
             name = e.args[0]
-            if name == '*' or name in err_dict:
+            if name in err_dict:
                 for i in err_dict[name]:
+                    self.run(i)
+            elif '*' in err_dict:
+                for i in err_dict['*']:
                     self.run(i)
             else:
                 raise e
@@ -515,7 +518,7 @@ class VirtualMachine:
         else:
             try:
                 return self.unary_op[op](val)
-            except ValueError as e:
+            except (ValueError, TypeError) as e:
                 raise Lang_Err(e.__class__.__name__,str(e))
 
     def index(self, left, right):
