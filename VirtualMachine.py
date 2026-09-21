@@ -246,7 +246,8 @@ class VirtualMachine:
                     Builtins_stmt: self.builtins_stmt,
                     List: self.transform_iterable_object_and_calc_inner_node,
                     Dict: self.transform_iterable_object_and_calc_inner_node,
-                    Try_stmt: self.try_stmt
+                    Try_stmt: self.try_stmt,
+                    Throw_stmt: self.throw_stmt
                     }
 
     def err_name(self, e):
@@ -254,6 +255,14 @@ class VirtualMachine:
 
     def err_des(self, e):
         return e.args[1]
+
+    def throw_stmt(self, node):
+        """
+        执行throw 语句
+        :param node: throw_stmt 节点
+        :return: None
+        """
+        raise Lang_Err(node.name, node.description)
 
     def try_stmt(self, node):
         """

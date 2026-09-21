@@ -115,6 +115,8 @@ class Parser:
             return self.remove_stmt()
         elif t == 'try':
             return self.try_stmt()
+        elif t == 'throw':
+            return self.throw_stmt()
         else:
             # 其他情况，当表达式处理
             return self.assign()
@@ -223,6 +225,15 @@ class Parser:
             self.expect('}')
         node = Try_stmt(try_body,catch_list,finally_body)
         return node
+
+    def throw_stmt(self):
+        self.consume()
+        self.expect('(')
+        name = self.assign()
+        self.expect(',')
+        description = self.assign()
+        self.expect(')')
+        return Throw_stmt(name,description)
         
 
     def factor(self):

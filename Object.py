@@ -234,6 +234,16 @@ class Try_stmt(Statement):
         self.finally_body = finally_body
 
 
+class Throw_stmt(Statement):
+    """
+    throw 语句
+    """
+
+    def __init__(self,name,description):
+        self.name = name
+        self.description = description
+
+
 class Exit_Error(Exception):
     """
     exit Exception，以区分退出当前代码和退出整个解释器程序
