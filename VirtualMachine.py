@@ -26,13 +26,14 @@ class Func:
     词法作用域，支持闭包
     """
 
-    def __init__(self, vars, body, parent):
+    def __init__(self, vars, body, parent, name=Id('default Func name')):
         self.vars = vars
         self.body = body
         self.parent = parent
+        self.name = name
 
     def __repr__(self):
-        return f'Func({self.vars})'
+        return f'Func({self.name.id}:{self.vars})'
 
 
 def inner_print(s, end):
@@ -124,6 +125,8 @@ class VirtualMachine:
                                'err_name': Func([Id('err')], [], None),
                                'err_des': Func([Id('err')], [], None)
                                }
+        for name, func in self.builtins_scope.items():
+            func.name = Id(name)
         # 内置函数实际执行体
         self.func = {
             'print': lambda: inner_print(self.read_variable(Id('s'), tolerance=True, default='', only_local=True),
@@ -296,7 +299,7 @@ class VirtualMachine:
         n = self.run(n)
         t = type(n)
         if t is not int and t is not float:
-            raise Lang_Err('TypeError',f'{n} is not int or float')
+            raise Lang_Err('TypeError', f'{n} is not int or float')
         if n < 0 and n == int(n):
             raise Lang_Err('ValueError', f'{n}! need the num >= 0 or type(num) is float')
         if type(n) is float:
@@ -452,7 +455,10 @@ class VirtualMachine:
             if scope != self.scope:
                 scope = scope['parent']
             elif not tolerance:
-                raise Lang_Err('NameError', f'{name.id} not a variable')
+                if name.id in self.builtins_scope:
+                    return self.builtins_scope[name.id]
+                else:
+                    raise Lang_Err('NameError', f'{name.id} not a variable')
             else:
                 return default
         return scope['id'][name.id]
@@ -708,7 +714,7 @@ class VirtualMachine:
         """
         name, vars, body = node.name, node.vars, node.body
         # 三个参数分别是形参列表，函数体，父级作用域
-        f = Func(vars, body, self.cur_scope)
+        f = Func(vars, body, self.cur_scope, name)
         # 把当前函数记录在父级作用域
         self.cur_scope['id'][name.id] = f
         if self.cur_scope != self.scope:
