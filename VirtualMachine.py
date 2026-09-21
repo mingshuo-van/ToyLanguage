@@ -264,7 +264,7 @@ class VirtualMachine:
         """
         n = self.run(n)
         if n < 0 and n == int(n):
-            raise ValueError(f'{n}! need the num >= 0 or type(num) is float')
+            raise Lang_Err('ValueError',f'{n}! need the num >= 0 or type(num) is float')
         if type(n) is float:
             return gamma(n + 1)
         return factorial(n)
