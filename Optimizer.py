@@ -8,6 +8,9 @@ def fac(n):
     :param n: 被施加阶乘计算的数
     :return: 计算后的数
     """
+    t = type(n)
+    if t is not int and t is not float:
+        raise Lang_Err('TypeError', f'{n} is not int or float')
     if n < 0 and n == int(n):
         raise ValueError(f'{n}! need the num >= 0 or type(num) is float')
     if type(n) is float:
