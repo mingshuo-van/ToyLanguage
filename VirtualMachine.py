@@ -9,6 +9,11 @@ iter_item_type = type(iter({}.items()))
 iter_key_type = type(iter({}))
 iter_value_type = type(iter({}.values()))
 
+str_map = {iter_key_type: '<iter_key_type>',
+           iter_value_type: '<iter_value_type>',
+           iter_item_type: '<iter_item_type>'}
+
+
 def inner_str(object):
     """
     内置字符串转换函数，对一些元素修改了转换格式
@@ -21,6 +26,11 @@ def inner_str(object):
         return 'true'
     if object is False:
         return 'false'
+    try:
+        if type(object) in str_map:
+            return str_map[type(object)]
+    except TypeError:
+        return str(object)
     return str(object)
 
 
@@ -53,6 +63,11 @@ def inner_print(s, end):
         s = 'true'
     elif s is False:
         s = 'false'
+    try:
+        if type(s) in str_map:
+            s = str_map[type(s)]
+    except TypeError:
+        pass
     print(s, end=end)
 
 
@@ -72,7 +87,9 @@ class IterEnd:
     """
     迭代器迭代结束的信标
     """
-    pass
+
+    def __str__(self):
+        return 'IterEnd'
 
 
 class VirtualMachine:
