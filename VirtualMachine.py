@@ -513,7 +513,10 @@ class VirtualMachine:
             if val.id in self.cur_scope['id']:
                 self.cur_scope['id'].pop(val.id)
         else:
-            return self.unary_op[op](val)
+            try:
+                return self.unary_op[op](val)
+            except ValueError as e:
+                raise Lang_Err(e.__class__.__name__,str(e))
 
     def index(self, left, right):
         """
@@ -539,8 +542,8 @@ class VirtualMachine:
                 op = node.op = '='
                 right = node.right = self.run(right)
             return self.binary_op[op](left, right)
-        except ZeroDivisionError as e:
-            raise Lang_Err('ZeroDivisionError',str(e))
+        except (ZeroDivisionError,TypeError,ValueError) as e:
+            raise Lang_Err(e.__class__.__name__,str(e))
 
     def while_stmt(self, node):
         """
@@ -712,9 +715,12 @@ class VirtualMachine:
                         raise Lang_Err('NameError',f'{name.id} not is a valid function name')
         f = search[name.id] if search == self.builtins_scope else search['id'][name.id]
         # 创建当前要执行函数的局部作用域
-        local_scope = {'parent': self.cur_scope if search == self.builtins_scope else f.parent, 'id': {},
-                       'be_quoted': {}
-                       }
+        try:
+            local_scope = {'parent': self.cur_scope if search == self.builtins_scope else f.parent, 'id': {},
+                           'be_quoted': {}
+                           }
+        except AttributeError:
+            raise Lang_Err('TypeError',f'{type(f).__name__} is not a Func')
         # 进行形参实参绑定
         for key, val in zip(f.vars, vars):
             self.write_local_variable(key, self.run(val), local_scope)
@@ -776,7 +782,10 @@ class VirtualMachine:
         old_scope = self.cur_scope
         self.switch_call_scope_and_binds_arguments(name, vars, self.builtins_scope)
         key = name.id
-        res = self.func[key]()
+        try:
+            res = self.func[key]()
+        except ValueError as e:
+            raise Lang_Err(e.__class__.__name__,str(e))
         # 分析可能的闭包情况，当前内置函数应该无闭包实现
         # 但保留，保持和call_stmt的对称
         be_quoted = self.cur_scope['be_quoted']
