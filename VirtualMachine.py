@@ -59,7 +59,7 @@ def push(box, idx):
     :return: None
     """
     if type(box) is not list:
-        raise KeyError(f'{box} must be list')
+        raise Lang_Err('TypeError',f'{box} must be list')
     box.append(idx)
 
 
@@ -484,7 +484,7 @@ class VirtualMachine:
             if scope != self.scope:
                 scope = scope['parent']
             else:
-                raise KeyError(f'the variable called {name.id} not in parent scope')
+                raise Lang_Err('NameError',f'the variable called {name.id} not in parent scope')
             # 适配write_variable的逻辑，传入未拆分的原始Binary_expr节点
         return self.write_variable(name_origin, node, scope)
 
@@ -499,7 +499,7 @@ class VirtualMachine:
         while type(name) is Binary_expr:
             name = name.left
         if name.id not in self.scope['id']:
-            raise KeyError(f'the variable called {name.id} not in global scope')
+            raise Lang_Err('NameError',f'the variable called {name.id} not in global scope')
         return self.write_variable(name_origin, node, self.scope)
 
     def unary(self, node):
@@ -542,7 +542,7 @@ class VirtualMachine:
                 op = node.op = '='
                 right = node.right = self.run(right)
             return self.binary_op[op](left, right)
-        except (ZeroDivisionError,TypeError,ValueError) as e:
+        except (ZeroDivisionError,TypeError,ValueError,IndexError,KeyError) as e:
             raise Lang_Err(e.__class__.__name__,str(e))
 
     def while_stmt(self, node):
@@ -622,7 +622,7 @@ class VirtualMachine:
             if search != self.scope:
                 search = search['parent']
             else:
-                raise KeyError(f'{name.id} is not a variable')
+                raise Lang_Err('NameError',f'{name.id} is not a variable')
         # 记录引用，供之后分析释放未引用变量占用的内存
         search['be_quoted'][name.id] = None
 
