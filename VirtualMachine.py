@@ -784,7 +784,7 @@ class VirtualMachine:
         key = name.id
         try:
             res = self.func[key]()
-        except ValueError as e:
+        except (ValueError,FileNotFoundError,FileExistsError,PermissionError,IsADirectoryError,NotADirectoryError) as e:
             raise Lang_Err(e.__class__.__name__,str(e))
         # 分析可能的闭包情况，当前内置函数应该无闭包实现
         # 但保留，保持和call_stmt的对称
