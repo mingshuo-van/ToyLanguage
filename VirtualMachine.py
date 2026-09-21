@@ -66,7 +66,6 @@ def push(box, idx):
 
 # 这是给字典的键值对迭代的迭代器类型，专门保存起来是为了方便后续inner_next某些操作
 iter_item_type = type(iter({}.items()))
-func_type = type(Func([], [], None))
 
 
 class IterEnd:
@@ -218,7 +217,7 @@ class VirtualMachine:
         # 供self.run函数短路返回的类型集合
         self.kind = {int, float, str, bool, list, dict, type(None), iter_item_type,
                      type(iter({})), type(iter({}.values())), Return_stmt, Break_stmt, Continue_stmt,
-                     type(sys.__stdin__), type(IterEnd), func_type, Lang_Err}
+                     type(sys.__stdin__), type(IterEnd), Func, Lang_Err}
         # self.fun路由表
         self.ret = {Unary_expr: self.unary,
                     Binary_expr: self.binary,
@@ -796,7 +795,7 @@ class VirtualMachine:
             # 分析有无闭包并回收无关变量的内存
             be_quoted = self.cur_scope['be_quoted']
             for k, v in self.cur_scope['id'].items():
-                if k in be_quoted or type(v) is func_type:
+                if k in be_quoted or type(v) is Func:
                     be_quoted[k] = v
             self.cur_scope['id'] = {}
             for k, v in be_quoted.items():
@@ -829,7 +828,7 @@ class VirtualMachine:
         # 但保留，保持和call_stmt的对称
         be_quoted = self.cur_scope['be_quoted']
         for k, v in self.cur_scope['id'].items():
-            if k in be_quoted or type(v) is func_type:
+            if k in be_quoted or type(v) is Func:
                 be_quoted[k] = v
         self.cur_scope['id'] = {}
         for k, v in be_quoted.items():
