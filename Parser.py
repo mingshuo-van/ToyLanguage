@@ -204,10 +204,17 @@ class Parser:
             self.expect('(')
             condition = self.assign()
             self.expect(')')
+            other_name = None
+            if self.pos < self.length and self.tokens[self.pos].type == 'as':
+                self.consume()
+                name_token = self.expect('id')
+                other_name = Id(name_token.val)
             self.expect('{')
             then = self.stmt_list()
             self.expect('}')
             catch_list.append(If_stmt(condition,then))
+            if other_name:
+                catch_list[-1].otherwise = other_name
         finally_body = None
         if self.pos < self.length and self.tokens[self.pos].type == 'finally':
             self.consume()

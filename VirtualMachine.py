@@ -59,7 +59,7 @@ def push(box, idx):
     :return: None
     """
     if type(box) is not list:
-        raise Lang_Err('TypeError',f'{box} must be list')
+        raise Lang_Err('TypeError', f'{box} must be list')
     box.append(idx)
 
 
@@ -120,7 +120,9 @@ class VirtualMachine:
                                'read': Func([Id('file_handle')], [], None),
                                'write': Func([Id('file_handle'), Id('word')], [], None),
                                'close': Func([Id('file_handle')], [], None),
-                               'exit': Func([Id('num')], [], None)
+                               'exit': Func([Id('num')], [], None),
+                               'err_name': Func([Id('err')], [], None),
+                               'err_des': Func([Id('err')], [], None)
                                }
         # 内置函数实际执行体
         self.func = {
@@ -182,7 +184,9 @@ class VirtualMachine:
                 self.read_variable(Id('word'), only_local=True)
             ),
             'close': lambda: self.read_variable(Id('file_handle'), only_local=True).close(),
-            'exit': self.inner_exit
+            'exit': self.inner_exit,
+            'err_name': lambda: self.err_name(self.read_variable(Id('err'), only_local=True)),
+            'err_des': lambda: self.err_des(self.read_variable(Id('err'), only_local=True))
         }
         # 当前作用域指针
         self.cur_scope = self.scope
@@ -211,7 +215,7 @@ class VirtualMachine:
         # 供self.run函数短路返回的类型集合
         self.kind = {int, float, str, bool, list, dict, type(None), iter_item_type,
                      type(iter({})), type(iter({}.values())), Return_stmt, Break_stmt, Continue_stmt,
-                     type(sys.__stdin__), type(IterEnd), func_type}
+                     type(sys.__stdin__), type(IterEnd), func_type, Lang_Err}
         # self.fun路由表
         self.ret = {Unary_expr: self.unary,
                     Binary_expr: self.binary,
@@ -226,29 +230,53 @@ class VirtualMachine:
                     Try_stmt: self.try_stmt
                     }
 
-    def try_stmt(self,node):
+    def err_name(self, e):
+        return e.args[0]
+
+    def err_des(self, e):
+        return e.args[1]
+
+    def try_stmt(self, node):
         """
         执行try catch finally 相关代码的函数
         :param node: try_stmt 节点
         :return: None
         """
-        try_body ,catch_list, finally_body = node.try_body, node.catch_list,node.finally_body
+        try_body, catch_list, finally_body = node.try_body, node.catch_list, node.finally_body
         err_dict = {}
         if catch_list:
             for i in catch_list:
-                err_dict[i.condition] = i.then
+                err_dict[i.condition] = (i.then, i.otherwise)
         try:
             if try_body:
                 for i in try_body:
                     self.run(i)
         except Lang_Err as e:
             name = e.args[0]
+            do = False
             if name in err_dict:
-                for i in err_dict[name]:
-                    self.run(i)
+                do = True
             elif '*' in err_dict:
-                for i in err_dict['*']:
-                    self.run(i)
+                name = '*'
+                do = True
+            if do:
+                restore = None
+                other_name = None
+                if err_dict[name][1]:
+                    other_name = err_dict[name][1].id
+                    if other_name in self.cur_scope['id']:
+                        restore = self.cur_scope['id'][other_name]
+                    self.cur_scope['id'][other_name] = e
+                try:
+                    for i in err_dict[name][0]:
+                        self.run(i)
+                except Exception as err:
+                    raise err
+                finally:
+                    if restore:
+                        self.cur_scope['id'][other_name] = restore
+                    elif other_name:
+                        self.cur_scope['id'].pop(other_name)
             else:
                 raise e
         finally:
@@ -267,7 +295,7 @@ class VirtualMachine:
         """
         n = self.run(n)
         if n < 0 and n == int(n):
-            raise Lang_Err('ValueError',f'{n}! need the num >= 0 or type(num) is float')
+            raise Lang_Err('ValueError', f'{n}! need the num >= 0 or type(num) is float')
         if type(n) is float:
             return gamma(n + 1)
         return factorial(n)
@@ -413,7 +441,7 @@ class VirtualMachine:
             if name.id not in scope['id']:
                 if tolerance:
                     return default
-                raise Lang_Err('NameError',f'{name.id} not a variable in local scope')
+                raise Lang_Err('NameError', f'{name.id} not a variable in local scope')
             return scope['id'][name.id]
         while name.id not in scope['id']:
             # 寻找有对应标识符的作用域
@@ -421,7 +449,7 @@ class VirtualMachine:
             if scope != self.scope:
                 scope = scope['parent']
             elif not tolerance:
-                raise Lang_Err('NameError',f'{name.id} not a variable')
+                raise Lang_Err('NameError', f'{name.id} not a variable')
             else:
                 return default
         return scope['id'][name.id]
@@ -487,7 +515,7 @@ class VirtualMachine:
             if scope != self.scope:
                 scope = scope['parent']
             else:
-                raise Lang_Err('NameError',f'the variable called {name.id} not in parent scope')
+                raise Lang_Err('NameError', f'the variable called {name.id} not in parent scope')
             # 适配write_variable的逻辑，传入未拆分的原始Binary_expr节点
         return self.write_variable(name_origin, node, scope)
 
@@ -502,7 +530,7 @@ class VirtualMachine:
         while type(name) is Binary_expr:
             name = name.left
         if name.id not in self.scope['id']:
-            raise Lang_Err('NameError',f'the variable called {name.id} not in global scope')
+            raise Lang_Err('NameError', f'the variable called {name.id} not in global scope')
         return self.write_variable(name_origin, node, self.scope)
 
     def unary(self, node):
@@ -519,7 +547,7 @@ class VirtualMachine:
             try:
                 return self.unary_op[op](val)
             except (ValueError, TypeError) as e:
-                raise Lang_Err(e.__class__.__name__,str(e))
+                raise Lang_Err(e.__class__.__name__, str(e))
 
     def index(self, left, right):
         """
@@ -545,8 +573,8 @@ class VirtualMachine:
                 op = node.op = '='
                 right = node.right = self.run(right)
             return self.binary_op[op](left, right)
-        except (ZeroDivisionError,TypeError,ValueError,IndexError,KeyError) as e:
-            raise Lang_Err(e.__class__.__name__,str(e))
+        except (ZeroDivisionError, TypeError, ValueError, IndexError, KeyError) as e:
+            raise Lang_Err(e.__class__.__name__, str(e))
 
     def while_stmt(self, node):
         """
@@ -625,7 +653,7 @@ class VirtualMachine:
             if search != self.scope:
                 search = search['parent']
             else:
-                raise Lang_Err('NameError',f'{name.id} is not a variable')
+                raise Lang_Err('NameError', f'{name.id} is not a variable')
         # 记录引用，供之后分析释放未引用变量占用的内存
         search['be_quoted'][name.id] = None
 
@@ -669,9 +697,6 @@ class VirtualMachine:
             for i in body:
                 self.really_process_every_sentence(i)
 
-
-
-
     def call_define_stmt(self, node):
         """
         处理函数定义节点
@@ -705,7 +730,7 @@ class VirtualMachine:
         if search == self.builtins_scope:
             # 当调用内置函数时走快速通道
             if name.id not in search:
-                raise Lang_Err('NameError',f'{name.id} not is a valid function name')
+                raise Lang_Err('NameError', f'{name.id} not is a valid function name')
         else:
             # 按照作用域链查找函数定义
             while name.id not in search['id']:
@@ -715,7 +740,7 @@ class VirtualMachine:
                     if name.id in self.builtins_scope:
                         return None
                     else:
-                        raise Lang_Err('NameError',f'{name.id} not is a valid function name')
+                        raise Lang_Err('NameError', f'{name.id} not is a valid function name')
         f = search[name.id] if search == self.builtins_scope else search['id'][name.id]
         # 创建当前要执行函数的局部作用域
         try:
@@ -723,7 +748,7 @@ class VirtualMachine:
                            'be_quoted': {}
                            }
         except AttributeError:
-            raise Lang_Err('TypeError',f'{type(f).__name__} is not a Func')
+            raise Lang_Err('TypeError', f'{type(f).__name__} is not a Func')
         # 进行形参实参绑定
         for key, val in zip(f.vars, vars):
             self.write_local_variable(key, self.run(val), local_scope)
@@ -781,14 +806,16 @@ class VirtualMachine:
         """
         name, vars = node.name, node.vars
         if name.id not in self.builtins_scope:
-            raise Lang_Err('NameError',f'{name.id} not a inner function')
+            raise Lang_Err('NameError', f'{name.id} not a inner function')
         old_scope = self.cur_scope
         self.switch_call_scope_and_binds_arguments(name, vars, self.builtins_scope)
         key = name.id
         try:
             res = self.func[key]()
-        except (ValueError,FileNotFoundError,FileExistsError,PermissionError,IsADirectoryError,NotADirectoryError) as e:
-            raise Lang_Err(e.__class__.__name__,str(e))
+        except (
+                ValueError, FileNotFoundError, FileExistsError, PermissionError, IsADirectoryError,
+                NotADirectoryError) as e:
+            raise Lang_Err(e.__class__.__name__, str(e))
         # 分析可能的闭包情况，当前内置函数应该无闭包实现
         # 但保留，保持和call_stmt的对称
         be_quoted = self.cur_scope['be_quoted']
