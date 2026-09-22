@@ -13,6 +13,12 @@ str_map = {iter_key_type: '<iter_key_type>',
            iter_value_type: '<iter_value_type>',
            iter_item_type: '<iter_item_type>'}
 
+syntax_error_dict = {
+    Break_stmt: Lang_Err('SyntaxError', 'break outside loop'),
+    Continue_stmt: Lang_Err('SyntaxError', 'continue outside loop'),
+    Return_stmt: Lang_Err('SyntaxError', 'return outside Func'),
+}
+
 
 def inner_str(object):
     """
@@ -249,6 +255,10 @@ class VirtualMachine:
                     Try_stmt: self.try_stmt,
                     Throw_stmt: self.throw_stmt
                     }
+        # 在loop中的标志
+        self.loop = False
+        # 在Func中的标志
+        self.func_in = False
 
     def err_name(self, e):
         return e.args[0]
@@ -278,6 +288,15 @@ class VirtualMachine:
         try:
             if try_body:
                 for i in try_body:
+                    t = type(i)
+                    if t is Break_stmt or t is Continue_stmt:
+                        if self.loop:
+                            return i
+                        raise syntax_error_dict[t]
+                    if t is Return_stmt:
+                        if self.func_in:
+                            return self.run(i)
+                        raise syntax_error_dict[t]
                     self.run(i)
         except Lang_Err as e:
             name = e.args[0]
@@ -297,6 +316,15 @@ class VirtualMachine:
                     self.cur_scope['id'][other_name] = e
                 try:
                     for i in err_dict[name][0]:
+                        t = type(i)
+                        if t is Break_stmt or t is Continue_stmt:
+                            if self.loop:
+                                return i
+                            raise syntax_error_dict[t]
+                        if t is Return_stmt:
+                            if self.func_in:
+                                return self.run(i)
+                            raise syntax_error_dict[t]
                         self.run(i)
                 except Exception as err:
                     raise err
@@ -310,6 +338,15 @@ class VirtualMachine:
         finally:
             if finally_body:
                 for i in finally_body:
+                    t = type(i)
+                    if t is Break_stmt or t is Continue_stmt:
+                        if self.loop:
+                            return i
+                        raise syntax_error_dict[t]
+                    if t is Return_stmt:
+                        if self.func_in:
+                            return self.run(i)
+                        raise syntax_error_dict[t]
                     self.run(i)
 
     def inner_exit(self):
@@ -616,6 +653,8 @@ class VirtualMachine:
         :param node: while节点
         :return: Node 或 可能的 return节点
         """
+        old_loop = self.loop
+        self.loop = True
         condition, then = node.condition, node.then
         while self.run(condition):
             for i in then:
@@ -623,13 +662,18 @@ class VirtualMachine:
                 t = type(flag)
                 if t is Break_stmt:
                     # break相当于函数结束
+                    self.loop = old_loop
                     return
                 if t is Continue_stmt:
                     # continue相当于小循环结束
                     break
                 if t is Return_stmt:
                     # return需要原样送往上层
+                    self.loop = old_loop
+                    if not self.func_in:
+                        raise syntax_error_dict[Return_stmt]
                     return flag
+        self.loop = old_loop
 
     def if_stmt(self, node):
         """
@@ -646,8 +690,14 @@ class VirtualMachine:
             for i in then:
                 flag = self.run(i)
                 t = type(flag)
-                if t is Break_stmt or t is Continue_stmt or t is Return_stmt:
-                    return flag
+                if t is Break_stmt or t is Continue_stmt:
+                    if self.loop:
+                        return flag
+                    raise syntax_error_dict[t]
+                if t is Return_stmt:
+                    if self.func_in:
+                        return flag
+                    raise syntax_error_dict[t]
         if not do:
             # 如果if没有执行
             if el_if:
@@ -658,8 +708,14 @@ class VirtualMachine:
                         for j in then:
                             flag = self.run(j)
                             t = type(flag)
-                            if t is Break_stmt or t is Continue_stmt or t is Return_stmt:
-                                return flag
+                            if t is Break_stmt or t is Continue_stmt:
+                                if self.loop:
+                                    return flag
+                                raise syntax_error_dict[t]
+                            if t is Return_stmt:
+                                if self.func_in:
+                                    return flag
+                                raise syntax_error_dict[t]
                         # 如果elif执行了，记录已经执行过某个分支了
                         do = True
                         # 不必继续尝试接下来的循环，可以跳出了
@@ -669,8 +725,14 @@ class VirtualMachine:
             for i in otherwise:
                 flag = self.run(i)
                 t = type(flag)
-                if t is Break_stmt or t is Continue_stmt or t is Return_stmt:
-                    return flag
+                if t is Break_stmt or t is Continue_stmt:
+                    if self.loop:
+                        return flag
+                    raise syntax_error_dict[t]
+                if t is Return_stmt:
+                    if self.func_in:
+                        return flag
+                    raise syntax_error_dict[t]
 
     def really_record_nonlocal_left_variable_name(self, node):
         """
@@ -796,6 +858,8 @@ class VirtualMachine:
         :param node: 函数调用节点
         :return: 函数调用节点的返回值
         """
+        old_func = self.func_in
+        self.func_in = True
         name, vars = node.name, node.vars
         f = None
         if type(name) is not Id:
@@ -815,12 +879,16 @@ class VirtualMachine:
             else:
                 for i in f.body:
                     flag = self.run(i)
-                    if type(flag) is Return_stmt:
+                    t = type(flag)
+                    if t is Return_stmt:
                         res = self.run(flag.val)
                         break
+                    elif t is Continue_stmt or t is Break_stmt:
+                        raise syntax_error_dict[t]
         except Exception as e:
             raise e
         finally:
+            self.func_in = old_func
             if f:
                 # 分析有无闭包并回收无关变量的内存
                 be_quoted = self.cur_scope['be_quoted']
@@ -875,6 +943,10 @@ class VirtualMachine:
         try:
             for i in self.ast:
                 # 顺序执行整个代码文件的每一个AST
+                t = type(i)
+                if t in syntax_error_dict:
+                    # break continue return 不能在这里出现
+                    raise syntax_error_dict[t]
                 self.run(i)
         except Exit_Error as e:
             print(f'exit the code program with {str(e)}')
