@@ -262,7 +262,7 @@ class VirtualMachine:
         :param node: throw_stmt 节点
         :return: None
         """
-        raise Lang_Err(node.name, node.description)
+        raise Lang_Err(self.run(node.name), self.run(node.description))
 
     def try_stmt(self, node):
         """
