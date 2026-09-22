@@ -1,6 +1,6 @@
 # 我的某一次编译原理练习项目
 
-这个项目是我在做完上一个名为[van_shell](https://github.com/mingshuo-van/van_shell#)的野路子项目后，学了一段时间编译原理后试着写的。
+这个项目是我在做完上一个名为[van_shell](https://github.com/mingshuo-van/van_shell#)的练手项目后，学了一段时间编译原理后试着写的。
 
 依旧是基于python，因为它可以让我更专注于逻辑实现。
 
@@ -103,7 +103,6 @@ print(num())
 print(global_num)
 print(print)
 print('='*120)
-
 old_f = f
 fn outer(){
     a = 1
@@ -283,7 +282,7 @@ print(test()()())
 print('='*120)
 
 
-print('while if 流程控制')
+print('while for if 流程控制')
 
 i = 0
 limit = 30
@@ -328,6 +327,22 @@ if(0){
 }else{
     print(3)
 }
+
+i = 'num'
+for i in (3){
+    print(i)
+}
+for i in (-1,4){
+    print(i)
+}
+e = 3
+fn num(){
+    return 0
+}
+for i in (e,num(),-1){
+    print(i)
+}
+print(i)
 print('='*120)
 
 print('函数的递归')
@@ -411,20 +426,16 @@ print(d)
 print(has(d,'1'))
 print(has(d,'2'))
 print(has(t,'w'))
-n = print(iter_item(d))
-print(n)
-i = iter_item(d)
-print(next(i))
 d['test'] = 1
 d['apple'] = 'a'
-i = iter_item(d)
-a = next(i)
-print('test iter')
 print(d)
-while (a!=_iter_end){
-    print(a)
-    a = next(i)
+i = 1000
+print(i)
+for i in d{
+    print(i+':'+d[i])
 }
+print('全局 i 未被覆盖')
+print(i)
 arr = ['1','2','3','4','5']
 print(join(arr))
 t = join(arr,'A')
@@ -474,7 +485,6 @@ print(random())
 print(randrange(0,10000))
 print(randrange(0,10000))
 print('='*120)
-print('错误相关系统')
 try{
     a = 1/0.0
 
@@ -547,4 +557,58 @@ try{
 }catch(0) as e{
     print(err_des(e))
 }
+
+try{
+    try{
+        throw ('my_err', 'des')
+    }catch('*') as e{
+        throw (-1, err_des(e))
+    }
+}catch('*') as e{
+    print(err_name(e))
+    print(err_des(e))
+}
+try{
+    return null
+}catch('*') as e{
+    print(err_name(e) + ':' + err_des(e))
+}
+try{
+    break
+}catch('*') as e{
+    print(err_name(e) + ':' + err_des(e))
+}
+try{
+    continue
+}catch('*') as e{
+    print(err_name(e) + ':' + err_des(e))
+}
+try{
+    if(1){
+        return null
+    }
+    print('if_true')
+}catch('*') as e{
+    print(err_name(e) + ':' + err_des(e))
+}
+try{
+    if(0){
+        return null
+    }
+    print('if_false')
+}catch('*') as e{
+    print(err_name(e) + ':' + err_des(e))
+}
+try{
+        while(true){
+            if(1){
+                break
+            }
+        }
+    print('if_true_while')
+}catch('*') as e{
+    print(err_name(e) + ':' + err_des(e))
+}
+
+
 ```
