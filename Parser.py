@@ -41,13 +41,13 @@ class Parser:
         """
         token = self.tokens[self.pos] if self.pos < self.length else None
         if token is None:
-            raise Lang_Err('InvalidToken',f'unexpected token {token}')
+            raise Lang_Err('InvalidToken', f'unexpected token {token}')
         self.consume()
         if val is None:
             if not token.type == type:
-                raise Lang_Err('InvalidToken',f'unexpected token {token}')
+                raise Lang_Err('InvalidToken', f'unexpected token {token}')
         elif not (token.type == type and token.val == val):
-            raise Lang_Err('InvalidToken',f'unexpected token {token}')
+            raise Lang_Err('InvalidToken', f'unexpected token {token}')
         return token
 
     def program(self):
@@ -88,6 +88,9 @@ class Parser:
         elif t == 'while':
             # 解析循环语句
             return self.while_stmt()
+        elif t == 'for':
+            # 解析循环语句
+            return self.for_stmt()
         elif t == 'fn':
             # 解析函数定义语句
             return self.call_define_stmt()
@@ -165,6 +168,37 @@ class Parser:
         self.expect('}')
         return While_stmt(condition, then)
 
+    def for_stmt(self):
+        self.consume()
+        variable = self.factor()
+        self.expect('in')
+        num = None
+        domain = None
+        if self.pos < self.length and self.tokens[self.pos].type == '(':
+            num = []
+            self.consume()
+            num.append(self.factor())
+            while self.pos < self.length and self.tokens[self.pos].type == ',':
+                self.consume()
+                if self.pos < self.length and self.tokens[self.pos].type != ')':
+                    num.append(self.factor())
+            if len(num) > 3:
+                raise Lang_Err('TypeError', f'takes at most 3 arguments ({len(num)} given)')
+            self.expect(')')
+        else:
+            domain = self.factor()
+        self.expect('{')
+        body = self.stmt_list()
+        self.expect('}')
+        if num:
+            l = len(num)
+            if l == 1:
+                return For_stmt(variable, body, end=num[0])
+            if l == 2:
+                return For_stmt(variable, body, start=num[0], end=num[1])
+            return For_stmt(variable, body, start=num[0], end=num[1], step=num[2])
+        return For_stmt(variable, body, domain=domain)
+
     def call_define_stmt(self):
         self.consume()
         name = self.expect('id')
@@ -214,7 +248,7 @@ class Parser:
             self.expect('{')
             then = self.stmt_list()
             self.expect('}')
-            catch_list.append(If_stmt(condition,then))
+            catch_list.append(If_stmt(condition, then))
             if other_name:
                 catch_list[-1].otherwise = other_name
         finally_body = None
@@ -223,7 +257,7 @@ class Parser:
             self.expect('{')
             finally_body = self.stmt_list()
             self.expect('}')
-        node = Try_stmt(try_body,catch_list,finally_body)
+        node = Try_stmt(try_body, catch_list, finally_body)
         return node
 
     def throw_stmt(self):
@@ -233,8 +267,7 @@ class Parser:
         self.expect(',')
         description = self.assign()
         self.expect(')')
-        return Throw_stmt(name,description)
-        
+        return Throw_stmt(name, description)
 
     def factor(self):
         token = self.tokens[self.pos] if self.pos < self.length else None
@@ -267,7 +300,7 @@ class Parser:
         elif token.type == '{':
             node = self.parse_dict()
         else:
-            raise Lang_Err('InvalidToken',f'unexpected token {token}')
+            raise Lang_Err('InvalidToken', f'unexpected token {token}')
         while self.pos < self.length and self.tokens[self.pos].type == '[':
             self.consume()
             is_slice = False
