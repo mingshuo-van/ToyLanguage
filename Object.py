@@ -223,12 +223,13 @@ class Return_stmt(Statement):
     def __repr__(self):
         return f'(return {self.val})'
 
+
 class Try_stmt(Statement):
     """
     try catch 语句
     """
 
-    def __init__(self,try_body,catch_list=None,finally_body=None):
+    def __init__(self, try_body, catch_list=None, finally_body=None):
         self.try_body = try_body
         self.catch_list = catch_list
         self.finally_body = finally_body
@@ -239,9 +240,26 @@ class Throw_stmt(Statement):
     throw 语句
     """
 
-    def __init__(self,name,description):
+    def __init__(self, name, description):
         self.name = name
         self.description = description
+
+
+class For_stmt(Statement):
+    """
+    for 语句
+    """
+
+    def __init__(self, id, body, start=None, end=None, step=None, domain=None):
+        self.id = id
+        self.end = end
+        self.start = start
+        self.step = step
+        self.domain = domain
+        self.body = body
+
+    def __str__(self):
+        return f'(for {self.id} in ({self.start},{self.end},{self.start}))' if self.domain is None else f'(for {self.id} in {self.domain})'
 
 
 class Exit_Error(Exception):
@@ -253,6 +271,7 @@ class Exit_Error(Exception):
     def __init__(self, val):
         super().__init__(val)
 
+
 class Lang_Err(Exception):
     """
     lang Exception，用于语言级报错
@@ -260,10 +279,10 @@ class Lang_Err(Exception):
     exception_description是错误描述
     """
 
-    def __init__(self,exception_name,exception_description):
+    def __init__(self, exception_name, exception_description):
         self.name = exception_name
         self.description = exception_description
-        super().__init__(exception_name,exception_description)
+        super().__init__(exception_name, exception_description)
 
     def __str__(self):
         return f'{self.name}:{self.description}'

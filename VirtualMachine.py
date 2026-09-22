@@ -4,15 +4,6 @@ from time import time
 from random import random, seed, randrange
 import sys
 
-# 这是给字典的键值对迭代的迭代器类型，专门保存起来是为了方便后续inner_next某些操作
-iter_item_type = type(iter({}.items()))
-iter_key_type = type(iter({}))
-iter_value_type = type(iter({}.values()))
-
-str_map = {iter_key_type: '<iter_key_type>',
-           iter_value_type: '<iter_value_type>',
-           iter_item_type: '<iter_item_type>'}
-
 syntax_error_dict = {
     Break_stmt: Lang_Err('SyntaxError', 'break outside loop'),
     Continue_stmt: Lang_Err('SyntaxError', 'continue outside loop'),
@@ -32,11 +23,6 @@ def inner_str(object):
         return 'true'
     if object is False:
         return 'false'
-    try:
-        if type(object) in str_map:
-            return str_map[type(object)]
-    except TypeError:
-        return str(object)
     return str(object)
 
 
@@ -69,11 +55,6 @@ def inner_print(s, end):
         s = 'true'
     elif s is False:
         s = 'false'
-    try:
-        if type(s) in str_map:
-            s = str_map[type(s)]
-    except TypeError:
-        pass
     print(s, end=end)
 
 
@@ -87,15 +68,6 @@ def push(box, idx):
     if type(box) is not list:
         raise Lang_Err('TypeError', f'{box} must be list')
     box.append(idx)
-
-
-class IterEnd:
-    """
-    迭代器迭代结束的信标
-    """
-
-    def __str__(self):
-        return 'IterEnd'
 
 
 class VirtualMachine:
@@ -122,10 +94,6 @@ class VirtualMachine:
                                'push': Func([Id('box'), Id('idx')], [], None),
                                'pop': Func([Id('box'), Id('key')], [], None),
                                'has': Func([Id('box'), Id('key')], [], None),
-                               'iter_key': Func([Id('box')], [], None),
-                               'iter_value': Func([Id('box')], [], None),
-                               'iter_item': Func([Id('box')], [], None),
-                               'next': Func([Id('iter_pointer')], [], None),
                                'join': Func([Id('box'), Id('s')], [], None),
                                'split': Func([Id('target'), Id('cut'), Id('count')], [], None),
                                'strip': Func([Id('s')], [], None),
@@ -169,10 +137,6 @@ class VirtualMachine:
             'has': lambda: self.read_variable(Id('key'), only_local=True) in self.read_variable(
                 Id('box'),
                 only_local=True),
-            'iter_key': self.iter_key,
-            'iter_value': self.iter_value,
-            'iter_item': self.iter_item,
-            'next': lambda: self.inner_next(self.read_variable(Id('iter_pointer'), only_local=True)),
             'join': lambda: self.read_variable(Id('s'), tolerance=True, default='', only_local=True).join(
                 self.read_variable(Id('box'), only_local=True)
             ),
@@ -238,9 +202,9 @@ class VirtualMachine:
                           'index': self.index
                           }
         # 供self.run函数短路返回的类型集合
-        self.kind = {int, float, str, bool, list, dict, type(None), iter_item_type,
-                     iter_key_type, iter_value_type, Return_stmt, Break_stmt, Continue_stmt,
-                     type(sys.__stdin__), IterEnd, Func, Lang_Err}
+        self.kind = {int, float, str, bool, list, dict, type(None),
+                     Return_stmt, Break_stmt, Continue_stmt,
+                     type(sys.__stdin__), Func, Lang_Err}
         # self.fun路由表
         self.ret = {Unary_expr: self.unary,
                     Binary_expr: self.binary,
@@ -253,7 +217,8 @@ class VirtualMachine:
                     List: self.transform_iterable_object_and_calc_inner_node,
                     Dict: self.transform_iterable_object_and_calc_inner_node,
                     Try_stmt: self.try_stmt,
-                    Throw_stmt: self.throw_stmt
+                    Throw_stmt: self.throw_stmt,
+                    For_stmt: self.for_stmt
                     }
         # 在loop中的标志
         self.loop = False
@@ -265,6 +230,49 @@ class VirtualMachine:
 
     def err_des(self, e):
         return e.args[1]
+
+    def for_stmt(self, node):
+        old_loop = self.loop
+        self.loop = True
+        variable, body, domain = node.id, node.body, node.domain
+        start, end, step = node.start, node.end, node.step
+        restore = None
+        other_name = variable.id
+        if other_name in self.cur_scope['id']:
+            restore = self.cur_scope['id'][other_name]
+        self.cur_scope['id'][other_name] = 0
+        if domain:
+            d = self.run(domain)
+        else:
+            if step:
+                d = range(self.run(start),self.run(end),self.run(step))
+            elif start:
+                d = range(self.run(start),self.run(end))
+            else:
+                d = range(self.run(end))
+        for k in d:
+            self.cur_scope['id'][other_name] = k
+            for i in body:
+                flag = self.run(i)
+                t = type(flag)
+                if t is Break_stmt:
+                    # break相当于函数结束
+                    self.loop = old_loop
+                    return
+                if t is Continue_stmt:
+                    # continue相当于小循环结束
+                    break
+                if t is Return_stmt:
+                    # return需要原样送往上层
+                    self.loop = old_loop
+                    if not self.func_in:
+                        raise syntax_error_dict[Return_stmt]
+                    return flag
+        if restore:
+            self.cur_scope['id'][other_name] = restore
+        else:
+            self.cur_scope['id'].pop(other_name)
+        self.loop = old_loop
 
     def throw_stmt(self, node):
         """
@@ -368,33 +376,6 @@ class VirtualMachine:
             return gamma(n + 1)
         return factorial(n)
 
-    def iter_key(self):
-        """
-        返回一个字典键的迭代器
-        :return: 一个键迭代器
-        """
-        # 避免_iter_end被覆盖或未被创建，主动赋值一次
-        self.cur_scope['parent']['id']['_iter_end'] = IterEnd
-        return iter(self.read_variable(Id('box'), only_local=True))
-
-    def iter_value(self):
-        """
-        返回一个字典值的迭代器
-        :return: 一个值迭代器
-        """
-        # 避免_iter_end被覆盖或未被创建，主动赋值一次
-        self.cur_scope['parent']['id']['_iter_end'] = IterEnd
-        return iter(self.read_variable(Id('box'), only_local=True).values())
-
-    def iter_item(self):
-        """
-        返回一个字典键值对的迭代器
-        :return: 一个键值对迭代器
-        """
-        # 避免_iter_end被覆盖或未被创建，主动赋值一次
-        self.cur_scope['parent']['id']['_iter_end'] = IterEnd
-        return iter(self.read_variable(Id('box'), only_local=True).items())
-
     def inner_plus(self, x, y):
         """
         内置加法函数
@@ -420,15 +401,6 @@ class VirtualMachine:
             return x | y
         # 说明是其他类型，直接计算
         return x + y
-
-    def inner_next(self, iter_pointer):
-        # 驱动迭代器执行
-        # 迭代器消费完毕会返回提示结束的信标
-        try:
-            t = next(iter_pointer)
-            return [self.run(t[0]), self.run(t[1])] if type(iter_pointer) is iter_item_type else [self.run(t)]
-        except StopIteration:
-            return IterEnd
 
     def find(self):
         """
