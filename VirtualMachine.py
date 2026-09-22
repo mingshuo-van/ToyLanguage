@@ -797,6 +797,7 @@ class VirtualMachine:
         :return: 函数调用节点的返回值
         """
         name, vars = node.name, node.vars
+        f = None
         if type(name) is not Id:
             # 对于调用函数没有函数名，而是另一个函数的返回值时
             # 用内置临时名字承接对应函数的返回值，继续执行
@@ -805,31 +806,34 @@ class VirtualMachine:
             self.cur_scope['id']['[temp_'] = self.run(name)
             name = Id('[temp_')
         old_scope = self.cur_scope
-        f = self.switch_call_scope_and_binds_arguments(name, vars, self.cur_scope)
-        res = None
-        if f is None:
-            # 用户没有定义可调用的函数，尝试作为内置函数执行
-            res = self.builtins_stmt(node)
-        else:
-            for i in f.body:
-                flag = self.run(i)
-                if type(flag) is Return_stmt:
-                    res = self.run(flag.val)
-                    break
-
-        if f:
-            # 分析有无闭包并回收无关变量的内存
-            be_quoted = self.cur_scope['be_quoted']
-            for k, v in self.cur_scope['id'].items():
-                if k in be_quoted or type(v) is Func:
-                    be_quoted[k] = v
-            self.cur_scope['id'] = {}
-            for k, v in be_quoted.items():
-                self.cur_scope['id'][k] = v
-        self.cur_scope = old_scope
-        if name.id == '[temp_':
-            # 回收内置函数，避免污染符号表
-            self.cur_scope['id'].pop('[temp_')
+        try:
+            f = self.switch_call_scope_and_binds_arguments(name, vars, self.cur_scope)
+            res = None
+            if f is None:
+                # 用户没有定义可调用的函数，尝试作为内置函数执行
+                res = self.builtins_stmt(node)
+            else:
+                for i in f.body:
+                    flag = self.run(i)
+                    if type(flag) is Return_stmt:
+                        res = self.run(flag.val)
+                        break
+        except Exception as e:
+            raise e
+        finally:
+            if f:
+                # 分析有无闭包并回收无关变量的内存
+                be_quoted = self.cur_scope['be_quoted']
+                for k, v in self.cur_scope['id'].items():
+                    if k in be_quoted or type(v) is Func:
+                        be_quoted[k] = v
+                self.cur_scope['id'] = {}
+                for k, v in be_quoted.items():
+                    self.cur_scope['id'][k] = v
+            self.cur_scope = old_scope
+            if name.id == '[temp_':
+                # 回收内置函数，避免污染符号表
+                self.cur_scope['id'].pop('[temp_')
         return res
 
     def builtins_stmt(self, node):
@@ -850,16 +854,17 @@ class VirtualMachine:
                 ValueError, FileNotFoundError, FileExistsError, PermissionError, IsADirectoryError,
                 NotADirectoryError) as e:
             raise Lang_Err(e.__class__.__name__, str(e))
-        # 分析可能的闭包情况，当前内置函数应该无闭包实现
-        # 但保留，保持和call_stmt的对称
-        be_quoted = self.cur_scope['be_quoted']
-        for k, v in self.cur_scope['id'].items():
-            if k in be_quoted or type(v) is Func:
-                be_quoted[k] = v
-        self.cur_scope['id'] = {}
-        for k, v in be_quoted.items():
-            self.cur_scope['id'][k] = v
-        self.cur_scope = old_scope
+        finally:
+            # 分析可能的闭包情况，当前内置函数应该无闭包实现
+            # 但保留，保持和call_stmt的对称
+            be_quoted = self.cur_scope['be_quoted']
+            for k, v in self.cur_scope['id'].items():
+                if k in be_quoted or type(v) is Func:
+                    be_quoted[k] = v
+            self.cur_scope['id'] = {}
+            for k, v in be_quoted.items():
+                self.cur_scope['id'][k] = v
+            self.cur_scope = old_scope
         return res
 
     def vm(self):
