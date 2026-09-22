@@ -10,6 +10,7 @@ syntax_error_dict = {
     Return_stmt: Lang_Err('SyntaxError', 'return outside Func'),
 }
 
+map = {type(sys.__stdin__):'<file_handle>'}
 
 def inner_str(object):
     """
@@ -23,6 +24,8 @@ def inner_str(object):
         return 'true'
     if object is False:
         return 'false'
+    if type(object) in map:
+        return map[type(object)]
     return str(object)
 
 
@@ -55,6 +58,8 @@ def inner_print(s, end):
         s = 'true'
     elif s is False:
         s = 'false'
+    elif type(s) in map:
+        s = map[type(s)]
     print(s, end=end)
 
 
