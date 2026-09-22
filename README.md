@@ -101,6 +101,7 @@ print(num())
 print(num())
 print(num())
 print(global_num)
+print(print)
 print('='*120)
 
 old_f = f
@@ -473,4 +474,77 @@ print(random())
 print(randrange(0,10000))
 print(randrange(0,10000))
 print('='*120)
+print('错误相关系统')
+try{
+    a = 1/0.0
+
+}catch('ZeroDivisionError'){
+    print('Zero get')
+}finally{
+    print('final')
+}
+remove a
+try{
+    print(a)
+}catch('NameError'){
+    print('Name get')
+    try{
+        remove f
+        f()
+    }catch('NameError'){
+        print('Name get again')
+    }
+}
+a = 10
+try{
+    try{
+        a()
+    }catch('TypeError'){
+        print('Type get')
+    }finally{
+        a = [1,2,3]
+        try{
+            print(a['oiwn'])
+        }catch('TypeError'){
+            print('Type get again')
+        }finally{
+            remove a
+            a()
+        }
+
+    }
+}catch('NameError'){
+    print('Name here')
+}
+a = 'oirn'
+try{
+    a = int(a)
+}catch('ValueError'){
+    print('Value int')
+}
+
+try{
+    a = -'str'
+}catch('*'){
+    print('str')
+}
+e = 10
+print('e is ' + e)
+try{
+    x = 'str'!
+}catch('*') as e{
+    print('here')
+    vars()
+    print(err_name(e))
+    print(err_des(e))
+}finally{
+    print('e is ' + e)
+    vars()
+}
+
+try{
+    throw (0,'自定义错误类型，可以不为字符串')
+}catch(0) as e{
+    print(err_des(e))
+}
 ```
