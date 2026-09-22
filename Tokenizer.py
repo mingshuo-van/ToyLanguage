@@ -44,11 +44,12 @@ class Tokenizer:
             self.valid_variable_chars.add(chr(x + i))
             self.valid_variable_chars.add(chr(y + i))
         # 内置关键字
-        self.inner = {'while', 'true', 'false', 'if', 'elif', 'else', 'fn', 'break', 'continue', 'return', 'remove',
-                      'null', 'try', 'catch', 'finally','as','throw',
-                      '==', '!=', '>=', '<=', '&&', '||', '<<', '>>', '**', ':=', '=>', '?=', '//', '::',
-                      '+', '-', '*', '/', '%', '^', '&', '|', '~', '!', '<', '>', '(', ')', '{', '}', '[', ']', ',',
-                      '.', '=', ':'}
+        self.inner_keywords = {'while', 'true', 'false', 'if', 'elif', 'else', 'fn', 'break', 'continue', 'return',
+                               'remove', 'null', 'try', 'catch', 'finally', 'as', 'throw', 'for', 'in'}
+        # 内置运算符
+        self.inner_ops = {'==', '!=', '>=', '<=', '&&', '||', '<<', '>>', '**', ':=', '=>', '?=', '//', '::',
+                          '+', '-', '*', '/', '%', '^', '&', '|', '~', '!', '<', '>', '(', ')', '{', '}', '[', ']', ',',
+                          '.', '=', ':'}
         # 主要用于判断某token开头是否是数字
         self.digit = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
         # 判断整型的合法构成字符
@@ -132,7 +133,7 @@ class Tokenizer:
         self.pos = 0
         self.cnt = len(self.txt[self.index]) if self.index < self.length else 0
 
-    def is_id(self, s: str,row=-1,col=-1):
+    def is_id(self, s: str, row=-1, col=-1):
         """
         判断传入的字符串是否是合法的标识符
         :param col: 报错用定位
@@ -149,10 +150,10 @@ class Tokenizer:
         for i in range(1, len(s)):
             if s[i] not in self.valid_variable_chars:
                 # 只要出现了不合法的字符，就说明这个字符串不是一个合法的标识符
-                raise Lang_Err('InvalidIdentifier',f'for {s} row:{row} col:{col}')
+                raise Lang_Err('InvalidIdentifier', f'for {s} row:{row} col:{col}')
         return True
 
-    def is_int(self, s: str,row=-1,col=-1):
+    def is_int(self, s: str, row=-1, col=-1):
         """
         判断传入的字符串是否是合法的整型
         :param col: 报错用定位
@@ -166,13 +167,13 @@ class Tokenizer:
         for i in s:
             if i not in self.digit_int:
                 # 出现任何不属于合法整型的字符，就不是合法的整型
-                if i not in {'e','E','_','.'}:
+                if i not in {'e', 'E', '_', '.'}:
                     # 若也不属于合法浮点型，则报错
-                    raise Lang_Err('InvalidInt',f'for {s} row:{row} col:{col}')
+                    raise Lang_Err('InvalidInt', f'for {s} row:{row} col:{col}')
                 return False
         return True
 
-    def is_float(self, s: str,row=-1,col=-1):
+    def is_float(self, s: str, row=-1, col=-1):
         """
         判断传入的字符串是否是合法的浮点型
         :param col: 报错用定位
@@ -186,10 +187,10 @@ class Tokenizer:
         point = False
         e = False
         last_index = len(s) - 1
-        for index,i in enumerate(s):
+        for index, i in enumerate(s):
             if i not in self.digit_float:
                 # 出现任何不属于合法浮点型的字符，就不是合法的浮点型
-                raise Lang_Err('InvalidFloat',f'for {s} row:{row} col:{col}')
+                raise Lang_Err('InvalidFloat', f'for {s} row:{row} col:{col}')
             if i == '.':
                 if not point:
                     # 首次出现小数点，记录
@@ -210,7 +211,7 @@ class Tokenizer:
                     raise Lang_Err('InvalidFloat', f'two e|E for {s} row:{row} col:{col}')
         return True
 
-    def get_whole_couple_block(self, flag, row=-1,col=-1):
+    def get_whole_couple_block(self, flag, row=-1, col=-1):
         """
         当遇到成对的符号时，调用获得整个字符串，如 "" ,符号必须一样
         :param col: 报错用定位
@@ -225,13 +226,13 @@ class Tokenizer:
             while self.cur() is None:
                 self.consume()
                 if self.index >= self.length:
-                    raise Lang_Err('InvalidStr',f'the counts of {flag} must be a even {res} row:{row} col:{col}')
+                    raise Lang_Err('InvalidStr', f'the counts of {flag} must be a even {res} row:{row} col:{col}')
             if self.cur() == flag:
                 count += 1
             if self.cur() == '\\':
                 # 当遇到转义符号时，替换合法的转义符号，否则，报错
                 if self.peek() in set("\'\";\\nbtr"):
-                    res += {'n': '\n', 't': '\t', 'r': '\r', 'b': '\b','\'':'\'','\"':'\"','\\':'\\'}[self.peek()]
+                    res += {'n': '\n', 't': '\t', 'r': '\r', 'b': '\b', '\'': '\'', '\"': '\"', '\\': '\\'}[self.peek()]
                     self.consume()
                     self.consume()
                     continue
@@ -268,7 +269,7 @@ class Tokenizer:
             return Token(cur, cur, row, col)
         if cur == '\'' or cur == '\"':
             # 检测字符串
-            return Token('str', self.get_whole_couple_block(cur,row,col)[1:-1], row, col)
+            return Token('str', self.get_whole_couple_block(cur, row, col)[1:-1], row, col)
         while cur and cur != ' ' and cur != '\t':
             if cur == '#':
                 self.next_line()
@@ -281,7 +282,7 @@ class Tokenizer:
             if next_line:
                 break
             cur = self.cur()
-            if kind is str and res in self.inner and cur not in self.valid_variable_chars:
+            if kind is str and res in self.inner_keywords and cur not in self.valid_variable_chars:
                 # 检测是否是关键字，true和false也归属这里
                 break
             if kind is str and cur not in self.valid_variable_chars:
@@ -293,14 +294,14 @@ class Tokenizer:
             if kind is bool and cur not in self.valid_variable_chars:
                 # 检测以下划线开头的一个完整标识符
                 break
-            if res in self.inner and res + cur not in self.inner:
+            if res in self.inner_ops and res + cur not in self.inner_ops:
                 # 检测内置运算符，内置运算符之间必须没有空格，如== **
                 break
-        if res in self.inner:
+        if res in self.inner_keywords or res in self.inner_ops:
             return Token(res, res, row, col)
-        if (kind is str or kind is bool) and self.is_id(res,row,col):
+        if (kind is str or kind is bool) and self.is_id(res, row, col):
             return Token('id', res, row, col)
-        if kind is int and self.is_int(res,row, col):
+        if kind is int and self.is_int(res, row, col):
             return Token('int', res, row, col)
         if kind is int and self.is_float(res):
             return Token('float', res, row, col)
