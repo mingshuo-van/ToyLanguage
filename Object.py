@@ -234,6 +234,14 @@ class Try_stmt(Statement):
         self.catch_list = catch_list
         self.finally_body = finally_body
 
+    def __repr__(self):
+        res = f'(try {self.try_body} '
+        if self.catch_list:
+            res += str(self.catch_list) + ' '
+        if self.finally_body:
+            res += str(self.finally_body) + ')'
+        return res
+
 
 class Throw_stmt(Statement):
     """
@@ -243,6 +251,9 @@ class Throw_stmt(Statement):
     def __init__(self, name, description):
         self.name = name
         self.description = description
+
+    def __repr__(self):
+        return f'(throw {self.name} {self.description})'
 
 
 class For_stmt(Statement):
@@ -258,7 +269,7 @@ class For_stmt(Statement):
         self.domain = domain
         self.body = body
 
-    def __str__(self):
+    def __repr__(self):
         return f'(for {self.id} in ({self.start},{self.end},{self.start}))' if self.domain is None else f'(for {self.id} in {self.domain})'
 
 
@@ -284,5 +295,5 @@ class Lang_Err(Exception):
         self.description = exception_description
         super().__init__(exception_name, exception_description)
 
-    def __str__(self):
+    def __repr__(self):
         return f'{self.name}:{self.description}'
