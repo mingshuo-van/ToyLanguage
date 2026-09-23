@@ -243,7 +243,7 @@ class Interpreter:
         self.loop = True
         variable, body, domain = node.id, node.body, node.domain
         start, end, step = node.start, node.end, node.step
-        restore = None
+        restore = only_here = object()
         other_name = variable.id
         if other_name in self.cur_scope['id']:
             restore = self.cur_scope['id'][other_name]
@@ -281,7 +281,7 @@ class Interpreter:
         except Exception as e:
             raise e
         finally:
-            if restore is not None:
+            if restore is not only_here:
                 self.cur_scope['id'][other_name] = restore
             else:
                 self.cur_scope['id'].pop(other_name)
@@ -330,8 +330,8 @@ class Interpreter:
                 name = '*'
                 do = True
             if do:
-                restore = None
-                other_name = None
+                restore = only_here = object()
+                other_name = only_here
                 if err_dict[name][1]:
                     other_name = err_dict[name][1].id
                     if other_name in self.cur_scope['id']:
@@ -352,9 +352,9 @@ class Interpreter:
                 except Exception as err:
                     raise err
                 finally:
-                    if restore is not None:
+                    if restore is not only_here:
                         self.cur_scope['id'][other_name] = restore
-                    elif other_name is not None:
+                    elif other_name is not only_here:
                         self.cur_scope['id'].pop(other_name)
             else:
                 raise e
