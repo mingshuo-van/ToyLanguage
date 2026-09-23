@@ -355,21 +355,21 @@ class Optimizer:
             # 处理 for
             body = node.body
             for i in range(len(body)):
-                body[i] = self.bool_optimize(body[i])
+                body[i] = self.fold_constance(body[i])
         elif t is Try_stmt:
             # 处理 try catch finally
             body = node.try_body
             for i in range(len(body)):
-                body[i] = self.bool_optimize(body[i])
+                body[i] = self.fold_constance(body[i])
             if node.catch_list:
                 for c in node.catch_list:
                     body = c.then
                     for i in range(len(body)):
-                        body[i] = self.bool_optimize(body[i])
+                        body[i] = self.fold_constance(body[i])
             if node.finally_body:
                 body = node.finally_body
                 for i in range(len(body)):
-                    body[i] = self.bool_optimize(body[i])
+                    body[i] = self.fold_constance(body[i])
         return node
 
     def optimize(self):
