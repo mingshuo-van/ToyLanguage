@@ -279,7 +279,7 @@ class VirtualMachine:
         except Exception as e:
             raise e
         finally:
-            if restore:
+            if restore is not None:
                 self.cur_scope['id'][other_name] = restore
             else:
                 self.cur_scope['id'].pop(other_name)
@@ -348,9 +348,9 @@ class VirtualMachine:
                 except Exception as err:
                     raise err
                 finally:
-                    if restore:
+                    if restore is not None:
                         self.cur_scope['id'][other_name] = restore
-                    elif other_name:
+                    elif other_name is not None:
                         self.cur_scope['id'].pop(other_name)
             else:
                 raise e
