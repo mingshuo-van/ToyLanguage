@@ -498,7 +498,7 @@ class Interpreter:
         while name.id not in scope['id']:
             # 寻找有对应标识符的作用域
             # 以初始作用域为起点，按照创建时的父作用域链拾阶而上
-            if scope != self.scope:
+            if scope is not self.scope:
                 scope = scope['parent']
             elif not tolerance:
                 if name.id in self.builtins_scope:
@@ -567,7 +567,7 @@ class Interpreter:
             name = name.left
         while name.id not in scope['id']:
             # 拿到正确的作用域
-            if scope != self.scope:
+            if scope is not self.scope:
                 scope = scope['parent']
             else:
                 raise Lang_Err('NameError', f'the variable called {name.id} not in parent scope')
@@ -734,7 +734,7 @@ class Interpreter:
                 name = name.left
         search = self.cur_scope
         while name.id not in search['id']:
-            if search != self.scope:
+            if search is not self.scope:
                 search = search['parent']
             else:
                 raise Lang_Err('NameError', f'{name.id} is not a variable')
@@ -803,7 +803,7 @@ class Interpreter:
         f = Func(vars, body, self.cur_scope, name)
         # 把当前函数记录在父级作用域
         self.cur_scope['id'][name.id] = f
-        if self.cur_scope != self.scope:
+        if self.cur_scope is not self.scope:
             # 只有当父级作用域不是全局作用域时才执行记录
             for i in body:
                 t = type(i)
@@ -829,7 +829,7 @@ class Interpreter:
         else:
             # 按照作用域链查找函数定义
             while name.id not in search['id']:
-                if search != self.scope:
+                if search is not self.scope:
                     search = search['parent']
                 else:
                     if name.id in self.builtins_scope:
