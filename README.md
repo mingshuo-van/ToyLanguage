@@ -609,6 +609,14 @@ try{
 }catch('*') as e{
     print(err_name(e) + ':' + err_des(e))
 }
-
-
+try{
+    a = {1:'one',2:'two',3:'three'}
+    for i in a{
+        print(i + ':' + a[i])
+        a[4] = 'four'
+    }
+}catch('*') as e{
+    print(err_name(e))
+    print(err_des(e))
+}
 ```
