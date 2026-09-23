@@ -319,6 +319,8 @@ class Interpreter:
                         raise syntax_error_dict[t]
                     self.run(i)
         except Lang_Err as e:
+            # 采用的是基于 name 的捕获而不是基于变量类型的捕获
+            # 如 catch('name') 而不是 catch(err_object)
             name = e.args[0]
             do = False
             if name in err_dict:
