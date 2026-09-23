@@ -46,10 +46,14 @@ class Tokenizer:
         # 内置关键字
         self.inner_keywords = {'while', 'true', 'false', 'if', 'elif', 'else', 'fn', 'break', 'continue', 'return',
                                'remove', 'null', 'try', 'catch', 'finally', 'as', 'throw', 'for', 'in'}
-        # 内置运算符
+        # 内置单token符号
         self.inner_ops = {'==', '!=', '>=', '<=', '&&', '||', '<<', '>>', '**', ':=', '=>', '?=', '//', '::',
                           '+', '-', '*', '/', '%', '^', '&', '|', '~', '!', '<', '>', '(', ')', '{', '}', '[', ']', ',',
                           '.', '=', ':'}
+        # 用于存储合法的单字符符号
+        self.valid_op_chars = {'+', '-', '*', '/', '%', '^', '&', '|', '~', '!', '<', '>', '(', ')', '{', '}', '[', ']',
+                               ',',
+                               '.', '=', ':', '?', '\'', '\"','#'}
         # 主要用于判断某token开头是否是数字
         self.digit = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
         # 判断整型的合法构成字符
@@ -255,6 +259,8 @@ class Tokenizer:
         kind = None
         row = self.index
         col = self.pos
+        if cur not in self.valid_op_chars and cur not in self.valid_variable_chars:
+            raise Lang_Err('InvalidChar', f'{cur} is not a valid chars row:{row} col:{col}')
         # 这里用type仅仅是因为 kind is type 操作比 kind == "str" 更便宜而已
         # 用的具体类型只是随便选的而已
         if 'a' <= cur <= 'z' or 'A' <= cur <= 'Z':
