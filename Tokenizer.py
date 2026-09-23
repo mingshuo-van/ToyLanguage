@@ -19,7 +19,7 @@ class Token:
         self.col = col
 
     def __repr__(self):
-        return f'type:{self.type}  val:{self.val} row:{self.row} col:{self.col}'
+        return f'type:{self.type}  val:{self.val} row:{self.row + 1} col:{self.col + 1}'
 
 
 class Tokenizer:
@@ -53,7 +53,7 @@ class Tokenizer:
         # 用于存储合法的单字符符号
         self.valid_op_chars = {'+', '-', '*', '/', '%', '^', '&', '|', '~', '!', '<', '>', '(', ')', '{', '}', '[', ']',
                                ',',
-                               '.', '=', ':', '?', '\'', '\"','#'}
+                               '.', '=', ':', '?', '\'', '\"', '#'}
         # 主要用于判断某token开头是否是数字
         self.digit = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
         # 判断整型的合法构成字符
@@ -154,7 +154,7 @@ class Tokenizer:
         for i in range(1, len(s)):
             if s[i] not in self.valid_variable_chars:
                 # 只要出现了不合法的字符，就说明这个字符串不是一个合法的标识符
-                raise Lang_Err('InvalidIdentifier', f'for {s} row:{row} col:{col}')
+                raise Lang_Err('InvalidIdentifier', f'for {s} row:{row + 1} col:{col + 1}')
         return True
 
     def is_int(self, s: str, row=-1, col=-1):
@@ -173,7 +173,7 @@ class Tokenizer:
                 # 出现任何不属于合法整型的字符，就不是合法的整型
                 if i not in {'e', 'E', '_', '.'}:
                     # 若也不属于合法浮点型，则报错
-                    raise Lang_Err('InvalidInt', f'for {s} row:{row} col:{col}')
+                    raise Lang_Err('InvalidInt', f'for {s} row:{row + 1} col:{col + 1}')
                 return False
         return True
 
@@ -194,25 +194,25 @@ class Tokenizer:
         for index, i in enumerate(s):
             if i not in self.digit_float:
                 # 出现任何不属于合法浮点型的字符，就不是合法的浮点型
-                raise Lang_Err('InvalidFloat', f'for {s} row:{row} col:{col}')
+                raise Lang_Err('InvalidFloat', f'for {s} row:{row + 1} col:{col + 1}')
             if i == '.':
                 if not point:
                     # 首次出现小数点，记录
                     point = True
                     if index == last_index:
-                        raise Lang_Err('InvalidFloat', f'point is the last char for {s} row:{row} col:{col}')
+                        raise Lang_Err('InvalidFloat', f'point is the last char for {s} row:{row + 1} col:{col + 1}')
                 else:
                     # 出现多次小数点，不合法
-                    raise Lang_Err('InvalidFloat', f'two point for {s} row:{row} col:{col}')
+                    raise Lang_Err('InvalidFloat', f'two point for {s} row:{row + 1} col:{col + 1}')
             if i == 'e' or i == 'E':
                 if not e:
                     # 首次出现科学计数法符号
                     e = True
                     if index == last_index:
-                        raise Lang_Err('InvalidFloat', f'{i} is the last char for {s} row:{row} col:{col}')
+                        raise Lang_Err('InvalidFloat', f'{i} is the last char for {s} row:{row + 1} col:{col + 1}')
                 else:
                     # 科学计数法符号只能出现一次
-                    raise Lang_Err('InvalidFloat', f'two e|E for {s} row:{row} col:{col}')
+                    raise Lang_Err('InvalidFloat', f'two e|E for {s} row:{row + 1} col:{col + 1}')
         return True
 
     def get_whole_couple_block(self, flag, row=-1, col=-1):
@@ -230,7 +230,8 @@ class Tokenizer:
             while self.cur() is None:
                 self.consume()
                 if self.index >= self.length:
-                    raise Lang_Err('InvalidStr', f'the counts of {flag} must be a even {res} row:{row} col:{col}')
+                    raise Lang_Err('InvalidStr',
+                                   f'the counts of {flag} must be a even {res} row:{row + 1} col:{col + 1}')
             if self.cur() == flag:
                 count += 1
             if self.cur() == '\\':
@@ -241,7 +242,7 @@ class Tokenizer:
                     self.consume()
                     continue
                 else:
-                    raise Lang_Err('InvalidStr', f'don\'t support \\{self.peek()} row:{row} col:{col}')
+                    raise Lang_Err('InvalidStr', f'don\'t support \\{self.peek()} row:{row + 1} col:{col + 1}')
             res += self.cur()
             self.consume()
         return res
@@ -260,7 +261,7 @@ class Tokenizer:
         row = self.index
         col = self.pos
         if cur not in self.valid_op_chars and cur not in self.valid_variable_chars:
-            raise Lang_Err('InvalidChar', f'{cur} is not a valid chars row:{row} col:{col}')
+            raise Lang_Err('InvalidChar', f'{cur} is not a valid chars row:{row + 1} col:{col + 1}')
         # 这里用type仅仅是因为 kind is type 操作比 kind == "str" 更便宜而已
         # 用的具体类型只是随便选的而已
         if 'a' <= cur <= 'z' or 'A' <= cur <= 'Z':
