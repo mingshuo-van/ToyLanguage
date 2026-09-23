@@ -266,8 +266,8 @@ class Optimizer:
                     if right is True and a:
                         return left
                 elif op == '||':
-                    a = True
-                    b = True
+                    a = False
+                    b = False
                     # 可以隐式转bool的节点先转bool，并更新对应的判断参数，方便接下来基于常量的优化
                     if x is str or xi:
                         node.left = left = bool(left)
