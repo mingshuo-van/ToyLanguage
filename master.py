@@ -6,7 +6,7 @@ import Object
 from Tokenizer import Tokenizer
 from Parser import Parser
 from Optimizer import Optimizer
-from VirtualMachine import VirtualMachine
+from Interpreter import Interpreter
 
 
 def get_ast(address):
@@ -38,7 +38,7 @@ if len(sys.argv) > 1:
 t = Tokenizer('')
 p = Parser([])
 o = Optimizer([])
-v = VirtualMachine([])
+v = Interpreter([])
 if address:
     for i in address:
         if os.path.splitext(i)[1] == '.ast':

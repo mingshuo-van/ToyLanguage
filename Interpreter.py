@@ -10,7 +10,8 @@ syntax_error_dict = {
     Return_stmt: Lang_Err('RuntimeError', 'return outside Func'),
 }
 
-map = {type(sys.__stdin__):'<file_handle>'}
+map = {type(sys.__stdin__): '<file_handle>'}
+
 
 def inner_str(object):
     """
@@ -75,7 +76,7 @@ def push(box, idx):
     box.append(idx)
 
 
-class VirtualMachine:
+class Interpreter:
     """
     虚拟机类
     """
@@ -275,7 +276,7 @@ class VirtualMachine:
                             raise syntax_error_dict[Return_stmt]
                         return flag
         except RuntimeError as e:
-            raise Lang_Err(e.__class__.__name__,str(e))
+            raise Lang_Err(e.__class__.__name__, str(e))
         except Exception as e:
             raise e
         finally:
@@ -749,10 +750,10 @@ class VirtualMachine:
         k = type(sentence)
         if k is Binary_expr and sentence.op == ':=':
             self.really_record_nonlocal_left_variable_name(sentence)
-        elif k is If_stmt or k is While_stmt or k is Call_define_stmt:
-            self.search_variable_in_while_if_define_stmt(sentence)
+        elif k is If_stmt or k is While_stmt or k is Call_define_stmt or k is Try_stmt or k is For_stmt:
+            self.search_variable_in_inner_node_stmt(sentence)
 
-    def search_variable_in_while_if_define_stmt(self, node):
+    def search_variable_in_inner_node_stmt(self, node):
         """
         用来递归地寻找并记录在while if 和 call_define 中的 := 标记的变量名
         :param node: while 或 if 语句
@@ -775,10 +776,21 @@ class VirtualMachine:
             then = node.then
             for i in then:
                 self.really_process_every_sentence(i)
-        elif t is Call_define_stmt:
+        elif t is Call_define_stmt or t is For_stmt:
             body = node.body
             for i in body:
                 self.really_process_every_sentence(i)
+        elif t is Try_stmt:
+            body = node.try_body
+            for i in body:
+                self.really_process_every_sentence(i)
+            if node.catch_list:
+                for i in node.catch_list:
+                    for j in i.then:
+                        self.really_process_every_sentence(j)
+            if node.finally_body:
+                for i in node.finally_body:
+                    self.really_process_every_sentence(i)
 
     def call_define_stmt(self, node):
         """
@@ -798,9 +810,9 @@ class VirtualMachine:
                 if t is Binary_expr and i.op == ':=':
                     # 寻找并记录引用的父级作用域变量
                     self.really_record_nonlocal_left_variable_name(i)
-                elif t is While_stmt or t is If_stmt or t is Call_define_stmt:
-                    # 递归处理while if call_define 语句中对父级作用域变量的引用
-                    self.search_variable_in_while_if_define_stmt(i)
+                elif t is While_stmt or t is If_stmt or t is Call_define_stmt or t is For_stmt or t is Try_stmt:
+                    # 递归处理while if call_define for try 语句中对父级作用域变量的引用
+                    self.search_variable_in_inner_node_stmt(i)
 
     def switch_call_scope_and_binds_arguments(self, name, vars, search):
         """
