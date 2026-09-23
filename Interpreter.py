@@ -119,7 +119,8 @@ class Interpreter:
                                'close': Func([Id('file_handle')], [], None),
                                'exit': Func([Id('num')], [], None),
                                'err_name': Func([Id('err')], [], None),
-                               'err_des': Func([Id('err')], [], None)
+                               'err_des': Func([Id('err')], [], None),
+                               'clear': Func([], [], None)
                                }
         for name, func in self.builtins_scope.items():
             func.name = Id(name)
@@ -127,8 +128,7 @@ class Interpreter:
         self.func = {
             'print': lambda: inner_print(self.read_variable(Id('s'), tolerance=True, default='', only_local=True),
                                          self.read_variable(Id('end'), tolerance=True, default='\n', only_local=True)),
-            'vars': lambda: print(
-                self.cur_scope['parent']['id'] if 'parent' in self.cur_scope else self.cur_scope['id']),
+            'vars': lambda: print(self.cur_scope['parent']['id']),
             'get': lambda: input(self.read_variable(Id('s'), tolerance=True, default='', only_local=True)),
             'int': lambda: int(self.read_variable(Id('s'), tolerance=True, default=0, only_local=True)),
             'float': lambda: float(self.read_variable(Id('s'), tolerance=True, default=0.0, only_local=True)),
@@ -181,7 +181,8 @@ class Interpreter:
             'close': lambda: self.read_variable(Id('file_handle'), only_local=True).close(),
             'exit': self.inner_exit,
             'err_name': lambda: self.err_name(self.read_variable(Id('err'), only_local=True)),
-            'err_des': lambda: self.err_des(self.read_variable(Id('err'), only_local=True))
+            'err_des': lambda: self.err_des(self.read_variable(Id('err'), only_local=True)),
+            'clear': lambda: self.cur_scope['parent']['id'].clear()
         }
         # 当前作用域指针
         self.cur_scope = self.scope
