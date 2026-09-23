@@ -12,7 +12,7 @@ def fac(n):
     if t is not int and t is not float:
         raise Lang_Err('TypeError', f'{n} is not int or float')
     if n < 0 and n == int(n):
-        raise ValueError(f'{n}! need the num >= 0 or type(num) is float')
+        raise Lang_Err('ValueError', f'{n}! need the num >= 0 or type(num) is float')
     if type(n) is float:
         # 碰到浮点数时，调用标准库的gamma函数计算，返回的是一个浮点数
         return gamma(n + 1)
@@ -202,20 +202,23 @@ class Optimizer:
             op = node.op
             t = type(val)
             # 通过最优子节点判断当前节点是否能优化
-            if t in self.literal_used:
-                if op == 'not':
-                    node = not val
-                elif op == '!':
-                    node = fac(val)
-                elif op == '-':
-                    node = -val
-                else:
-                    node = ~val
-            elif op == 'not':
-                if t is str:
-                    node = not val
-                elif t is List or t is Dict:
-                    node = not val.val
+            try:
+                if t in self.literal_used:
+                    if op == 'not':
+                        node = not val
+                    elif op == '!':
+                        node = fac(val)
+                    elif op == '-':
+                        node = -val
+                    else:
+                        node = ~val
+                elif op == 'not':
+                    if t is str:
+                        node = not val
+                    elif t is List or t is Dict:
+                        node = not val.val
+            except (ValueError, TypeError) as e:
+                raise Lang_Err(e.__class__.__name__, str(e))
         elif t is Binary_expr:
             # 递归处理双目的子节点，保证当前节点处理时其子节点已经是最优
             node.left = left = self.fold_constance(node.left)
@@ -225,66 +228,69 @@ class Optimizer:
             y = type(right)
             xi = x in self.literal_used
             yi = y in self.literal_used
-            if xi and yi:
-                node = self.binary_op[op](left, right)
-            elif op == '+':
-                # 处理 + 运算符的特殊行为
-                if x is str and (yi or y is str):
-                    node = left + inner_str(right)
-                elif y is str and xi:
-                    node = inner_str(left) + right
-                elif x is Dict and y is Dict:
-                    node = Dict(left.val | right.val)
-                elif x is List and y is List:
-                    node = List(left.val + right.val)
-            elif op == '&&':
-                a = False
-                b = False
-                # 可以隐式转bool的节点先转bool，并更新对应的判断参数，方便接下来基于常量的优化
-                if x is str or xi:
-                    node.left = left = bool(left)
+            try:
+                if xi and yi:
+                    node = self.binary_op[op](left, right)
+                elif op == '+':
+                    # 处理 + 运算符的特殊行为
+                    if x is str and (yi or y is str):
+                        node = left + inner_str(right)
+                    elif y is str and xi:
+                        node = inner_str(left) + right
+                    elif x is Dict and y is Dict:
+                        node = Dict(left.val | right.val)
+                    elif x is List and y is List:
+                        node = List(left.val + right.val)
+                elif op == '&&':
+                    a = False
+                    b = False
+                    # 可以隐式转bool的节点先转bool，并更新对应的判断参数，方便接下来基于常量的优化
+                    if x is str or xi:
+                        node.left = left = bool(left)
+                        a = True
+                    elif x is List or x is Dict:
+                        node.left = left = bool(left.val)
+                        a = True
+                    if y is str or yi:
+                        node.right = right = bool(right)
+                        b = True
+                    elif y is List or y is Dict:
+                        node.right = right = bool(right.val)
+                        b = True
+                    # 任何一个操作数为假，整个 and 运算为假
+                    if left is False or right is False:
+                        node = False
+                    # 任何一个操作数为真，则其对运算无贡献
+                    if left is True and b:
+                        return right
+                    if right is True and a:
+                        return left
+                elif op == '||':
                     a = True
-                elif x is List or x is Dict:
-                    node.left = left = bool(left.val)
-                    a = True
-                if y is str or yi:
-                    node.right = right = bool(right)
                     b = True
-                elif y is List or y is Dict:
-                    node.right = right = bool(right.val)
-                    b = True
-                # 任何一个操作数为假，整个 and 运算为假
-                if left is False or right is False:
-                    node = False
-                # 任何一个操作数为真，则其对运算无贡献
-                if left is True and b:
-                    return right
-                if right is True and a:
-                    return left
-            elif op == '||':
-                a = True
-                b = True
-                # 可以隐式转bool的节点先转bool，并更新对应的判断参数，方便接下来基于常量的优化
-                if x is str or xi:
-                    node.left = left = bool(left)
-                    a = True
-                elif x is List or x is Dict:
-                    node.left = left = bool(left.val)
-                    a = True
-                if y is str or yi:
-                    node.right = right = bool(right)
-                    b = True
-                elif y is List or y is Dict:
-                    node.right = right = bool(right.val)
-                    b = True
-                # 任何一个操作数为真，整个 or 运算为真
-                if left is True or right is True:
-                    node = True
-                # 任何一个操作数为假，则其对整个 or 运算无贡献
-                if left is False and b:
-                    return right
-                if right is False and a:
-                    return left
+                    # 可以隐式转bool的节点先转bool，并更新对应的判断参数，方便接下来基于常量的优化
+                    if x is str or xi:
+                        node.left = left = bool(left)
+                        a = True
+                    elif x is List or x is Dict:
+                        node.left = left = bool(left.val)
+                        a = True
+                    if y is str or yi:
+                        node.right = right = bool(right)
+                        b = True
+                    elif y is List or y is Dict:
+                        node.right = right = bool(right.val)
+                        b = True
+                    # 任何一个操作数为真，整个 or 运算为真
+                    if left is True or right is True:
+                        node = True
+                    # 任何一个操作数为假，则其对整个 or 运算无贡献
+                    if left is False and b:
+                        return right
+                    if right is False and a:
+                        return left
+            except (ZeroDivisionError, TypeError, ValueError, IndexError, KeyError) as e:
+                raise Lang_Err(e.__class__.__name__, str(e))
         elif t is If_stmt:
             # 对于 if 的condition,then,elif的condition,then和else的body一个个做处理
             node.condition = self.fold_constance(node.condition)
@@ -331,4 +337,9 @@ class Optimizer:
     def optimize(self):
         # 供外界调用的方法
         for i in range(len(self.ast)):
-            self.ast[i] = self.fold_constance(self.bool_optimize(self.ast[i]))
+            try:
+                self.ast[i] = self.fold_constance(self.bool_optimize(self.ast[i]))
+            except Lang_Err:
+                # 保证try catch 可以捕获
+                pass
+
