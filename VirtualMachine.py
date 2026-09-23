@@ -5,9 +5,9 @@ from random import random, seed, randrange
 import sys
 
 syntax_error_dict = {
-    Break_stmt: Lang_Err('SyntaxError', 'break outside loop'),
-    Continue_stmt: Lang_Err('SyntaxError', 'continue outside loop'),
-    Return_stmt: Lang_Err('SyntaxError', 'return outside Func'),
+    Break_stmt: Lang_Err('RuntimeError', 'break outside loop'),
+    Continue_stmt: Lang_Err('RuntimeError', 'continue outside loop'),
+    Return_stmt: Lang_Err('RuntimeError', 'return outside Func'),
 }
 
 map = {type(sys.__stdin__):'<file_handle>'}
@@ -246,38 +246,44 @@ class VirtualMachine:
         if other_name in self.cur_scope['id']:
             restore = self.cur_scope['id'][other_name]
         self.cur_scope['id'][other_name] = 0
-        if domain:
-            d = self.run(domain)
-        else:
-            if step:
-                d = range(self.run(start),self.run(end),self.run(step))
-            elif start:
-                d = range(self.run(start),self.run(end))
+        try:
+            if domain:
+                d = self.run(domain)
             else:
-                d = range(self.run(end))
-        for k in d:
-            self.cur_scope['id'][other_name] = k
-            for i in body:
-                flag = self.run(i)
-                t = type(flag)
-                if t is Break_stmt:
-                    # break相当于函数结束
-                    self.loop = old_loop
-                    return
-                if t is Continue_stmt:
-                    # continue相当于小循环结束
-                    break
-                if t is Return_stmt:
-                    # return需要原样送往上层
-                    self.loop = old_loop
-                    if not self.func_in:
-                        raise syntax_error_dict[Return_stmt]
-                    return flag
-        if restore:
-            self.cur_scope['id'][other_name] = restore
-        else:
-            self.cur_scope['id'].pop(other_name)
-        self.loop = old_loop
+                if step:
+                    d = range(self.run(start), self.run(end), self.run(step))
+                elif start:
+                    d = range(self.run(start), self.run(end))
+                else:
+                    d = range(self.run(end))
+            for k in d:
+                self.cur_scope['id'][other_name] = k
+                for i in body:
+                    flag = self.run(i)
+                    t = type(flag)
+                    if t is Break_stmt:
+                        # break相当于函数结束
+                        self.loop = old_loop
+                        return
+                    if t is Continue_stmt:
+                        # continue相当于小循环结束
+                        break
+                    if t is Return_stmt:
+                        # return需要原样送往上层
+                        self.loop = old_loop
+                        if not self.func_in:
+                            raise syntax_error_dict[Return_stmt]
+                        return flag
+        except RuntimeError as e:
+            raise Lang_Err(e.__class__.__name__,str(e))
+        except Exception as e:
+            raise e
+        finally:
+            if restore:
+                self.cur_scope['id'][other_name] = restore
+            else:
+                self.cur_scope['id'].pop(other_name)
+            self.loop = old_loop
 
     def throw_stmt(self, node):
         """
@@ -633,24 +639,28 @@ class VirtualMachine:
         old_loop = self.loop
         self.loop = True
         condition, then = node.condition, node.then
-        while self.run(condition):
-            for i in then:
-                flag = self.run(i)
-                t = type(flag)
-                if t is Break_stmt:
-                    # break相当于函数结束
-                    self.loop = old_loop
-                    return
-                if t is Continue_stmt:
-                    # continue相当于小循环结束
-                    break
-                if t is Return_stmt:
-                    # return需要原样送往上层
-                    self.loop = old_loop
-                    if not self.func_in:
-                        raise syntax_error_dict[Return_stmt]
-                    return flag
-        self.loop = old_loop
+        try:
+            while self.run(condition):
+                for i in then:
+                    flag = self.run(i)
+                    t = type(flag)
+                    if t is Break_stmt:
+                        # break相当于函数结束
+                        self.loop = old_loop
+                        return
+                    if t is Continue_stmt:
+                        # continue相当于小循环结束
+                        break
+                    if t is Return_stmt:
+                        # return需要原样送往上层
+                        self.loop = old_loop
+                        if not self.func_in:
+                            raise syntax_error_dict[Return_stmt]
+                        return flag
+        except Exception as e:
+            raise e
+        finally:
+            self.loop = old_loop
 
     def if_stmt(self, node):
         """
