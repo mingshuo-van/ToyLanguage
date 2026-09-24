@@ -61,6 +61,8 @@ class Tokenizer:
         # 判断浮点型的合法构成字符
         # 浮点型执行类似1e5这样的形式，也可以写1e5-3这样的格式，但是不支持1e-3，可以写1/1e3代替
         self.digit_float = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_', '.', 'E', 'e'}
+        # 合法转义字典
+        self.transform = {'n': '\n', 't': '\t', 'r': '\r', 'b': '\b', '\'': '\'', '\"': '\"', '\\': '\\'}
 
     def renew_txt_length(self):
         """
@@ -236,8 +238,9 @@ class Tokenizer:
                 count += 1
             if self.cur() == '\\':
                 # 当遇到转义符号时，替换合法的转义符号，否则，报错
-                if self.peek() in set("\'\";\\nbtr"):
-                    res += {'n': '\n', 't': '\t', 'r': '\r', 'b': '\b', '\'': '\'', '\"': '\"', '\\': '\\'}[self.peek()]
+
+                if self.peek() in self.transform:
+                    res += self.transform[self.peek()]
                     self.consume()
                     self.consume()
                     continue
