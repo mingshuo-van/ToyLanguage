@@ -55,7 +55,10 @@ class Parser:
         用于递归下降解析程序
         :return: 存放AST语句的一个列表
         """
-        return self.stmt_list()
+        try:
+            return self.stmt_list()
+        except IndexError as e:
+            raise Lang_Err(e.__class__.__name__, str(e))
 
     def stmt_list(self):
         """
