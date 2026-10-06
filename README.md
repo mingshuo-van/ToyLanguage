@@ -619,4 +619,13 @@ try{
     print(err_name(e))
     print(err_des(e))
 }
+fn ret_in_func(){
+    for i in (10){
+        if (i == 9){
+            return i
+        }
+    }
+}
+res = ret_in_func()
+print('res is ' + res)
 ```
