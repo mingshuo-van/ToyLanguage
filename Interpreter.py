@@ -271,11 +271,11 @@ class Interpreter:
                         # continue相当于小循环结束
                         break
                     if t is Return_stmt:
-                        # return需要原样送往上层
+                        # return计算后送往上层
                         self.loop = old_loop
                         if not self.func_in:
                             raise syntax_error_dict[Return_stmt]
-                        return flag
+                        return Return_stmt(self.run(flag.val))
         except RuntimeError as e:
             raise Lang_Err(e.__class__.__name__, str(e))
         except Exception as e:
@@ -316,7 +316,7 @@ class Interpreter:
                         raise syntax_error_dict[t]
                     if t is Return_stmt:
                         if self.func_in:
-                            return self.run(i)
+                            return Return_stmt(self.run(i.val))
                         raise syntax_error_dict[t]
                     self.run(i)
         except Lang_Err as e:
@@ -346,7 +346,7 @@ class Interpreter:
                             raise syntax_error_dict[t]
                         if t is Return_stmt:
                             if self.func_in:
-                                return self.run(i)
+                                return Return_stmt(self.run(i.val))
                             raise syntax_error_dict[t]
                         self.run(i)
                 except Exception as err:
@@ -368,7 +368,7 @@ class Interpreter:
                         raise syntax_error_dict[t]
                     if t is Return_stmt:
                         if self.func_in:
-                            return self.run(i)
+                            return Return_stmt(self.run(i.val))
                         raise syntax_error_dict[t]
                     self.run(i)
 
@@ -660,7 +660,7 @@ class Interpreter:
                         self.loop = old_loop
                         if not self.func_in:
                             raise syntax_error_dict[Return_stmt]
-                        return flag
+                        return Return_stmt(self.run(flag.val))
         except Exception as e:
             raise e
         finally:
@@ -687,7 +687,7 @@ class Interpreter:
                     raise syntax_error_dict[t]
                 if t is Return_stmt:
                     if self.func_in:
-                        return flag
+                        return Return_stmt(self.run(flag.val))
                     raise syntax_error_dict[t]
         if not do:
             # 如果if没有执行
@@ -705,7 +705,7 @@ class Interpreter:
                                 raise syntax_error_dict[t]
                             if t is Return_stmt:
                                 if self.func_in:
-                                    return flag
+                                    return Return_stmt(self.run(flag.val))
                                 raise syntax_error_dict[t]
                         # 如果elif执行了，记录已经执行过某个分支了
                         do = True
@@ -722,7 +722,7 @@ class Interpreter:
                     raise syntax_error_dict[t]
                 if t is Return_stmt:
                     if self.func_in:
-                        return flag
+                        return Return_stmt(self.run(flag.val))
                     raise syntax_error_dict[t]
 
     def really_record_nonlocal_left_variable_name(self, node):
