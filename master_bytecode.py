@@ -15,9 +15,10 @@ o = Optimizer(p.stmt_list())
 print(o.ast)
 c = Compiler(o.ast)
 c.do()
-for i in c.bytecodes:
-    print(i)
+for idx,i in enumerate(c.bytecodes):
+    print(f'{idx}------{i}')
 
 i = Interpreter_bytecode(c.bytecodes)
 i.do()
 print(i.env)
+print(i.stack)
