@@ -1,11 +1,13 @@
 from compiler import code
+
+
 class Interpreter_bytecode:
-    def __init__(self,bytecodes):
+    def __init__(self, bytecodes):
         self.bytecodes = bytecodes
         self.stack = []
         self.env = {}
         self.pc = 0
-        self. size = len(bytecodes)
+        self.size = len(bytecodes)
 
     def do(self):
         while self.pc < self.size:
@@ -51,6 +53,10 @@ class Interpreter_bytecode:
                 right = self.stack.pop()
                 left = self.stack.pop()
                 self.stack.append(left / right)
-
-
-
+            elif cur[0] is code.jump_if_false:
+                if not self.stack.pop():
+                    self.pc = cur[1]
+                else:
+                    self.pc += 1
+            elif cur[0] is code.jump:
+                self.pc = cur[1]
