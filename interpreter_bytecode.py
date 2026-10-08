@@ -23,6 +23,9 @@ class Interpreter_bytecode:
             lambda x, y: x >= y,
             lambda x, y: x == y,
             lambda x, y: x != y,
+            lambda x, y: x ^ y,
+            lambda x, y: x & y,
+            lambda x, y: x | y,
         ]
 
     def do(self):
@@ -45,9 +48,12 @@ class Interpreter_bytecode:
             elif op is code.jump_if_false:
                 if not self.stack.pop():
                     self.pc = cur[1]
+            elif op is code.jump_if_true:
+                if self.stack.pop():
+                    self.pc = cur[1]
             elif op is code.jump:
                 self.pc = cur[1]
-            elif calc.add <= op <= calc.ne:
+            elif calc.add <= op <= calc.bitwise_or:
                 right = self.stack.pop()
                 left = self.stack.pop()
                 self.stack.append(self.op_calc[op](left, right))

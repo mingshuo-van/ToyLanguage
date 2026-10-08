@@ -9,7 +9,7 @@ from Object import *
 弹出：pop
 赋值变量：write
 读取变量：read
-双操作数算数操作： add sub mul div mod power lt gt le ge eq ne
+双操作数算数操作： add sub mul div mod power lt gt le ge eq ne and or xor bitwise_and bitwise_or
 '''
 from enum import IntEnum, auto
 
@@ -23,6 +23,9 @@ class code(IntEnum):
     jump_if_true = auto()
     be_not = auto()
     jump = auto()
+
+    def __repr__(self):
+        return f'{self.name.upper()}'
 
 
 class calc(IntEnum):
@@ -39,6 +42,9 @@ class calc(IntEnum):
     ge = auto()
     eq = auto()
     ne = auto()
+    xor = auto()
+    bitwise_and = auto()
+    bitwise_or = auto()
 
     def __repr__(self):
         return f'{self.name.upper()}'
@@ -151,6 +157,42 @@ class Compiler:
             self.compile(left)
             self.compile(right)
             self.bytecodes.append((calc.power,))
+        elif op == '&&':
+            false_label = object()
+            end = object()
+            self.compile(left)
+            self.add_code_label(code.jump_if_false, false_label)
+            self.compile(right)
+            self.add_code_label(code.jump_if_false, false_label)
+            self.bytecodes.append((code.push, True))
+            self.add_code_label(code.jump, end)
+            self.record_label_location(false_label)
+            self.bytecodes.append((code.push, False))
+            self.record_label_location(end)
+        elif op == '||':
+            true_label = object()
+            end = object()
+            self.compile(left)
+            self.add_code_label(code.jump_if_true, true_label)
+            self.compile(right)
+            self.add_code_label(code.jump_if_true, true_label)
+            self.bytecodes.append((code.push, False))
+            self.add_code_label(code.jump, end)
+            self.record_label_location(true_label)
+            self.bytecodes.append((code.push, True))
+            self.record_label_location(end)
+        elif op == '^':
+            self.compile(left)
+            self.compile(right)
+            self.bytecodes.append((calc.xor,))
+        elif op == '&':
+            self.compile(left)
+            self.compile(right)
+            self.bytecodes.append((calc.bitwise_and,))
+        elif op == '|':
+            self.compile(left)
+            self.compile(right)
+            self.bytecodes.append((calc.bitwise_or,))
 
         if self.node_level == 1:
             self.bytecodes.append((code.pop,))
