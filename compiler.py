@@ -34,7 +34,7 @@ class Compiler:
         self.node_level = 0
         self.ast = ast
         self.bytecodes = []
-        self.direct_ret = [int, float, bool, str, None]
+        self.direct_ret = [int, float, bool, str, type(None)]
         self.need_compile = {Binary_expr: self.binary_node, Id: self.read, If_stmt: self.if_node}
 
     def do(self):
