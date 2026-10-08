@@ -107,13 +107,13 @@ class Compiler:
             t = self.compile(i)
             if t is Break_stmt:
                 if self.loop_bounds is None:
-                    raise Lang_Err('SystaxError', 'break out of loop')
+                    raise Lang_Err('SyntaxError', 'break out of loop')
                 else:
                     self.add_code_label(code.jump, self.loop_bounds[1])
                     break
             if t is Continue_stmt:
                 if self.loop_bounds is None:
-                    raise Lang_Err('SystaxError', 'continue out of loop')
+                    raise Lang_Err('SyntaxError', 'continue out of loop')
                 else:
                     self.add_code_label(code.jump, self.loop_bounds[0])
                     break
