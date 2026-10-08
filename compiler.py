@@ -84,53 +84,43 @@ class Compiler:
         if self.node_level == 1:
             self.bytecodes.append((code.pop,))
 
+    def compile_block(self, body):
+        # 重置节点层级，保证pop指令的添加无误
+        old = self.node_level
+        self.node_level = 0
+        for i in body:
+            self.compile(i)
+        self.node_level = old
+
     def if_node(self, node):
         back_label = []
         back_map = {}
         condition, then, if_list, otherwise = node.condition, node.then, node.if_list, node.otherwise
         self.compile(condition)
-        next = object()
-        back_label.append((len(self.bytecodes), next))
-        self.bytecodes.append((code.jump_if_false, next))
-        # 重置节点层级，保证pop指令的添加无误
-        old = self.node_level
-        self.node_level = 0
-        for i in then:
-            self.compile(i)
+        next_label = object()
+        back_label.append((len(self.bytecodes), next_label))
+        self.bytecodes.append((code.jump_if_false, next_label))
+        self.compile_block(then)
         end = None
         if if_list or otherwise:
             end = object()
             back_label.append((len(self.bytecodes), end))
             self.bytecodes.append((code.jump, end))
-        back_map[next] = len(self.bytecodes)
-        # 恢复层级信息，避免其他节点深度判断错误
-        self.node_level = old
+        back_map[next_label] = len(self.bytecodes)
         if if_list:
             for i in if_list:
-                next = object()
+                next_label = object()
                 condition = i.condition
                 then = i.then
                 self.compile(condition)
-                back_label.append((len(self.bytecodes), next))
-                self.bytecodes.append((code.jump_if_false, next))
-                # 重置节点层级，保证pop指令的添加无误
-                old = self.node_level
-                self.node_level = 0
-                for j in then:
-                    self.compile(j)
-                # 恢复层级信息，避免其他节点深度判断错误
-                self.node_level = old
+                back_label.append((len(self.bytecodes), next_label))
+                self.bytecodes.append((code.jump_if_false, next_label))
+                self.compile_block(then)
                 back_label.append((len(self.bytecodes), end))
                 self.bytecodes.append((code.jump, end))
-                back_map[next] = len(self.bytecodes)
+                back_map[next_label] = len(self.bytecodes)
         if otherwise:
-            # 重置节点层级，保证pop指令的添加无误
-            old = self.node_level
-            self.node_level = 0
-            for i in otherwise:
-                self.compile(i)
-            # 恢复层级信息，避免其他节点深度判断错误
-            self.node_level = old
+            self.compile_block(otherwise)
         if end:
             back_map[end] = len(self.bytecodes)
         # 标记回填具体数值
