@@ -9,7 +9,7 @@ from Object import *
 弹出：pop
 赋值变量：write
 读取变量：read
-双操作数算数操作： add sub mul div
+双操作数算数操作： add sub mul div mod power lt gt le ge eq ne
 '''
 from enum import IntEnum, auto
 
@@ -24,6 +24,13 @@ class code(IntEnum):
     mul = auto()
     div_int = auto()
     div_float = auto()
+    power = auto()
+    lt = auto()
+    gt = auto()
+    le = auto()
+    ge = auto()
+    eq = auto()
+    ne = auto()
     jump_if_false = auto()
     jump = auto()
 
@@ -96,6 +103,31 @@ class Compiler:
             self.compile(left)
             self.compile(right)
             self.bytecodes.append((code.div_int,))
+        elif op == '<':
+            self.compile(left)
+            self.compile(right)
+            self.bytecodes.append((code.lt,))
+        elif op == '>':
+            self.compile(left)
+            self.compile(right)
+            self.bytecodes.append((code.gt,))
+        elif op == '<=':
+            self.compile(left)
+            self.compile(right)
+            self.bytecodes.append((code.le,))
+        elif op == '>=':
+            self.compile(left)
+            self.compile(right)
+            self.bytecodes.append((code.ge,))
+        elif op == '==':
+            self.compile(left)
+            self.compile(right)
+            self.bytecodes.append((code.eq,))
+        elif op == '!=':
+            self.compile(left)
+            self.compile(right)
+            self.bytecodes.append((code.ne,))
+
         if self.node_level == 1:
             self.bytecodes.append((code.pop,))
 
