@@ -75,3 +75,11 @@ class Interpreter_bytecode:
                 right = self.stack.pop()
                 left = self.stack.pop()
                 self.stack.append(left != right)
+            elif op is code.mod:
+                right = self.stack.pop()
+                left = self.stack.pop()
+                self.stack.append(left % right)
+            elif op is code.power:
+                right = self.stack.pop()
+                left = self.stack.pop()
+                self.stack.append(left ** right)

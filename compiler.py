@@ -24,6 +24,7 @@ class code(IntEnum):
     mul = auto()
     div_int = auto()
     div_float = auto()
+    mod = auto()
     power = auto()
     lt = auto()
     gt = auto()
@@ -127,6 +128,14 @@ class Compiler:
             self.compile(left)
             self.compile(right)
             self.bytecodes.append((code.ne,))
+        elif op == '%':
+            self.compile(left)
+            self.compile(right)
+            self.bytecodes.append((code.mod,))
+        elif op == '**':
+            self.compile(left)
+            self.compile(right)
+            self.bytecodes.append((code.power,))
 
         if self.node_level == 1:
             self.bytecodes.append((code.pop,))
