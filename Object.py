@@ -54,7 +54,7 @@ class Unary_expr(Expression):
 class Binary_expr(Expression):
     """
     双目运算节点
-    一切双目运算符或可以视为双目运算符的运算符，包括getitem语义也被其修饰
+    一切双目运算符或可以视为双目运算符的运算符
     """
 
     def __init__(self, op, left, right):
@@ -64,6 +64,32 @@ class Binary_expr(Expression):
 
     def __repr__(self):
         return f'Binary_expr({self.op} {self.left} {self.right})'
+
+
+class Assign_expr(Expression):
+    """
+    赋值节点
+    """
+
+    def __init__(self, op, left, right):
+        self.op = op
+        self.left = left
+        self.right = right
+
+    def __repr__(self):
+        return f'Assign_expr({self.op} {self.left} {self.right})'
+
+class Index_expr(Expression):
+    """
+    getitem语义
+    """
+
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def __repr__(self):
+        return f'Getitem_expr({self.left} {self.right})'
 
 
 class Id(Expression):

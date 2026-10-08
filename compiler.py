@@ -7,8 +7,8 @@ from Object import *
 读取时先获得右操作数，再获得左操作数
 压入：push
 弹出：pop
-赋值变量：write
-读取变量：read
+赋值变量：write write_index
+读取变量：read read_index
 双操作数算数操作： add sub mul div mod power lt gt le ge eq ne and or xor bitwise_and bitwise_or
 '''
 from enum import IntEnum, auto
@@ -19,10 +19,14 @@ class code(IntEnum):
     pop = auto()
     write = auto()
     read = auto()
+    write_index = auto()
+    read_index = auto()
     jump_if_false = auto()
     jump_if_true = auto()
     be_not = auto()
     jump = auto()
+    get_list = auto()
+    get_dict = auto()
 
     def __repr__(self):
         return f'{self.name.upper()}'
@@ -56,10 +60,12 @@ class Compiler:
         self.node_level = 0
         self.ast = ast
         self.bytecodes = []
-        self.direct_add = {int, float, bool, str, type(None)}
+        self.direct_add = {int, float, bool, str, type(None), list, dict}
         self.direct_ret_type = {Break_stmt, Continue_stmt}
         self.need_compile = {Binary_expr: self.binary_node, Id: self.read, If_stmt: self.if_node,
-                             While_stmt: self.while_node}
+                             While_stmt: self.while_node, List: self.process_List_and_Dict,
+                             Dict: self.process_List_and_Dict,
+                             Assign_expr: self.assign, Index_expr: self.read}
         self.back_label = []
         self.back_map = {}
         self.loop_bounds = None
@@ -95,17 +101,54 @@ class Compiler:
         self.node_level -= 1
         return res
 
+    def process_List_and_Dict(self, node):
+        if type(node) is List:
+            size = len(node.val)
+            for i in node.val:
+                self.compile(i)
+            self.bytecodes.append((code.get_list, size))
+        else:
+            size = len(node.val)
+            for key in node.val:
+                self.compile(key)
+                self.compile(node.val[key])
+            self.bytecodes.append((code.get_dict, size))
+
     def read(self, node):
-        self.bytecodes.append((code.read, node.id))
+        t = type(node)
+        if t is Id:
+            self.bytecodes.append((code.push, node.id))
+            self.bytecodes.append((code.read,))
+        else:
+            left = node.left
+            # right 是 list 封装的
+            right = node.right
+            self.compile(left)
+            self.compile(right[0])
+            self.bytecodes.append((code.read_index,))
+        if self.node_level == 1:
+            self.bytecodes.append((code.pop,))
+
+    def assign(self, node):
+        op, left, right = node.op, node.left, node.right
+        if op == '=':
+            t = type(left)
+            if t is Id:
+                self.bytecodes.append((code.push, left.id))
+                self.compile(right)
+                self.bytecodes.append((code.write,))
+            else:
+                self.compile(left.left)
+                # left 是 Index_expr，left.right 是 list 封装的
+                self.compile(left.right[0])
+                self.compile(right)
+                self.bytecodes.append((code.write_index,))
         if self.node_level == 1:
             self.bytecodes.append((code.pop,))
 
     def binary_node(self, node):
         op, left, right = node.op, node.left, node.right
-        if op == '=':
-            self.compile(right)
-            self.bytecodes.append((code.write, left.id))
-        elif op == '+':
+        if op == '+':
             self.compile(left)
             self.compile(right)
             self.bytecodes.append((calc.add,))

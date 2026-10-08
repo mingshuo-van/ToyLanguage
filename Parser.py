@@ -323,7 +323,7 @@ class Parser:
             arr = [a]
             if is_slice:
                 arr.append(b)
-            node = Binary_expr('index', node, arr)
+            node = Index_expr(node, arr)
             if self.pos < self.length and self.tokens[self.pos].type == '(':
                 node = Call_stmt(node, self.call_stmt())
         while self.pos < self.length and self.tokens[self.pos].type == '!':
@@ -450,5 +450,5 @@ class Parser:
         if self.pos < self.length and self.tokens[self.pos].type in {'=', ':=', '=>', '?='}:
             op = self.tokens[self.pos].type
             self.consume()
-            token = Binary_expr(op, token, self.assign())
+            token = Assign_expr(op, token, self.assign())
         return token
