@@ -27,6 +27,9 @@ class code(IntEnum):
     jump_if_false = auto()
     jump = auto()
 
+    def __repr__(self):
+        return f'{self.name.upper()}'
+
 
 class Compiler:
 
