@@ -120,7 +120,7 @@ class Compiler:
         self.node_level = old
 
     def add_code_label(self, code_op, label):
-        self.back_label.append((len(self.bytecodes),label))
+        self.back_label.append((len(self.bytecodes), label))
         self.bytecodes.append((code_op, label))
 
     def record_label_location(self, label):
@@ -145,8 +145,7 @@ class Compiler:
                 self.compile(condition)
                 self.add_code_label(code.jump_if_false, next_label)
                 self.compile_block(then)
-                self.back_label.append((len(self.bytecodes), end))
-                self.bytecodes.append((code.jump, end))
+                self.add_code_label(code.jump, end)
                 self.record_label_location(next_label)
         if otherwise:
             self.compile_block(otherwise)
@@ -167,5 +166,3 @@ class Compiler:
         self.add_code_label(code.jump, start)
         self.record_label_location(end)
         self.loop_bounds = old
-
-
