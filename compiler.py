@@ -42,7 +42,7 @@ class calc(IntEnum):
     ge = auto()
     eq = auto()
     ne = auto()
-    xor = auto()
+    bitwise_xor = auto()
     bitwise_and = auto()
     bitwise_or = auto()
 
@@ -184,7 +184,7 @@ class Compiler:
         elif op == '^':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((calc.xor,))
+            self.bytecodes.append((calc.bitwise_xor,))
         elif op == '&':
             self.compile(left)
             self.compile(right)
