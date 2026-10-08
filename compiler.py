@@ -37,7 +37,7 @@ class Compiler:
         self.node_level = 0
         self.ast = ast
         self.bytecodes = []
-        self.direct_add = [int, float, bool, str, type(None)]
+        self.direct_add = {int, float, bool, str, type(None)}
         self.direct_ret_type = {Break_stmt, Continue_stmt}
         self.need_compile = {Binary_expr: self.binary_node, Id: self.read, If_stmt: self.if_node,
                              While_stmt: self.while_node}
@@ -110,11 +110,13 @@ class Compiler:
                     raise Lang_Err('SystaxError', 'break out of loop')
                 else:
                     self.add_code_label(code.jump, self.loop_bounds[1])
+                    break
             if t is Continue_stmt:
                 if self.loop_bounds is None:
                     raise Lang_Err('SystaxError', 'continue out of loop')
                 else:
                     self.add_code_label(code.jump, self.loop_bounds[0])
+                    break
 
         # 恢复节点层级
         self.node_level = old
