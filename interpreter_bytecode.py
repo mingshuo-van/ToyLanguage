@@ -21,12 +21,12 @@ class Interpreter_bytecode:
             elif cur[0] is code.write:
                 self.pc += 1
                 right = self.stack.pop()
-                left = self.stack.pop()
+                left = cur[1]
                 self.env[left] = right
                 self.stack.append(right)
             elif cur[0] is code.read:
                 self.pc += 1
-                head = self.stack.pop()
+                head = cur[1]
                 self.stack.append(self.env[head])
             elif cur[0] is code.add:
                 self.pc += 1

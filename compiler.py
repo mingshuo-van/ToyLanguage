@@ -52,17 +52,15 @@ class Compiler:
         self.node_level -= 1
 
     def read(self, node):
-        self.bytecodes.append((code.push, node.id))
-        self.bytecodes.append((code.read,))
+        self.bytecodes.append((code.read, node.id))
         if self.node_level == 1:
             self.bytecodes.append((code.pop,))
 
     def binary_node(self, node):
         op, left, right = node.op, node.left, node.right
         if op == '=':
-            self.bytecodes.append((code.push, left.id))
             self.compile(right)
-            self.bytecodes.append((code.write,))
+            self.bytecodes.append((code.write, left.id))
         elif op == '+':
             self.compile(left)
             self.compile(right)
