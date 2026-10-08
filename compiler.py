@@ -19,6 +19,12 @@ class code(IntEnum):
     pop = auto()
     write = auto()
     read = auto()
+    jump_if_false = auto()
+    jump_if_true = auto()
+    be_not = auto()
+    jump = auto()
+
+class calc(IntEnum):
     add = auto()
     sub = auto()
     mul = auto()
@@ -32,8 +38,6 @@ class code(IntEnum):
     ge = auto()
     eq = auto()
     ne = auto()
-    jump_if_false = auto()
-    jump = auto()
 
     def __repr__(self):
         return f'{self.name.upper()}'
@@ -87,55 +91,55 @@ class Compiler:
         elif op == '+':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.add,))
+            self.bytecodes.append((calc.add,))
         elif op == '-':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.sub,))
+            self.bytecodes.append((calc.sub,))
         elif op == '*':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.mul,))
+            self.bytecodes.append((calc.mul,))
         elif op == '/':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.div_float,))
+            self.bytecodes.append((calc.div_float,))
         elif op == '//':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.div_int,))
+            self.bytecodes.append((calc.div_int,))
         elif op == '<':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.lt,))
+            self.bytecodes.append((calc.lt,))
         elif op == '>':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.gt,))
+            self.bytecodes.append((calc.gt,))
         elif op == '<=':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.le,))
+            self.bytecodes.append((calc.le,))
         elif op == '>=':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.ge,))
+            self.bytecodes.append((calc.ge,))
         elif op == '==':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.eq,))
+            self.bytecodes.append((calc.eq,))
         elif op == '!=':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.ne,))
+            self.bytecodes.append((calc.ne,))
         elif op == '%':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.mod,))
+            self.bytecodes.append((calc.mod,))
         elif op == '**':
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((code.power,))
+            self.bytecodes.append((calc.power,))
 
         if self.node_level == 1:
             self.bytecodes.append((code.pop,))
