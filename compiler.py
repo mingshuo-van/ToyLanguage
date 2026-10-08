@@ -24,6 +24,7 @@ class code(IntEnum):
     be_not = auto()
     jump = auto()
 
+
 class calc(IntEnum):
     add = auto()
     sub = auto()
@@ -73,6 +74,16 @@ class Compiler:
             self.bytecodes.append((code.push, node))
         elif t in self.direct_ret_type:
             res = t
+            if t is Break_stmt:
+                if self.loop_bounds is None:
+                    raise Lang_Err('SyntaxError', 'break out of loop')
+                else:
+                    self.add_code_label(code.jump, self.loop_bounds[1])
+            if t is Continue_stmt:
+                if self.loop_bounds is None:
+                    raise Lang_Err('SyntaxError', 'continue out of loop')
+                else:
+                    self.add_code_label(code.jump, self.loop_bounds[0])
         else:
             self.need_compile[t](node)
         self.node_level -= 1
@@ -150,18 +161,8 @@ class Compiler:
         self.node_level = 0
         for i in body:
             t = self.compile(i)
-            if t is Break_stmt:
-                if self.loop_bounds is None:
-                    raise Lang_Err('SyntaxError', 'break out of loop')
-                else:
-                    self.add_code_label(code.jump, self.loop_bounds[1])
-                    break
-            if t is Continue_stmt:
-                if self.loop_bounds is None:
-                    raise Lang_Err('SyntaxError', 'continue out of loop')
-                else:
-                    self.add_code_label(code.jump, self.loop_bounds[0])
-                    break
+            if t is Break_stmt or t is Continue_stmt:
+                break
 
         # 恢复节点层级
         self.node_level = old

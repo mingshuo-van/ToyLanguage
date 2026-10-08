@@ -1,4 +1,4 @@
-from compiler import code,calc
+from compiler import code, calc
 
 
 class Interpreter_bytecode:
@@ -10,19 +10,19 @@ class Interpreter_bytecode:
         self.size = len(bytecodes)
         self.op_calc = [
             None,
-            lambda x,y: x + y,
-            lambda x,y: x - y,
-            lambda x,y: x * y,
-            lambda x,y: x // y,
-            lambda x,y: x / y,
-            lambda x,y: x % y,
-            lambda x,y: x ** y,
-            lambda x,y: x < y,
-            lambda x,y: x > y,
-            lambda x,y: x <= y,
-            lambda x,y: x >= y,
-            lambda x,y: x == y,
-            lambda x,y: x != y,
+            lambda x, y: x + y,
+            lambda x, y: x - y,
+            lambda x, y: x * y,
+            lambda x, y: x // y,
+            lambda x, y: x / y,
+            lambda x, y: x % y,
+            lambda x, y: x ** y,
+            lambda x, y: x < y,
+            lambda x, y: x > y,
+            lambda x, y: x <= y,
+            lambda x, y: x >= y,
+            lambda x, y: x == y,
+            lambda x, y: x != y,
         ]
 
     def do(self):
@@ -50,5 +50,4 @@ class Interpreter_bytecode:
             elif calc.add <= op <= calc.ne:
                 right = self.stack.pop()
                 left = self.stack.pop()
-                self.stack.append(self.op_calc[op](left,right))
-
+                self.stack.append(self.op_calc[op](left, right))
