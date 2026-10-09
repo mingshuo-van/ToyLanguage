@@ -9,7 +9,9 @@ from Object import *
 弹出：pop
 赋值变量：write write_index
 读取变量：read read_index
-双操作数算数操作： add sub mul div mod power lt gt le ge eq ne and or xor bitwise_and bitwise_or
+双操作数算数操作： add sub mul div mod power lt gt le ge eq ne and or bitwise_xor bitwise_and bitwise_or bitwise_left_step 
+                 bitwise_right_step
+单操作数算数操作： logic_not bitwise_not fac neg
 '''
 from enum import IntEnum, auto
 
@@ -48,6 +50,8 @@ class calc(IntEnum):
     bitwise_xor = auto()
     bitwise_and = auto()
     bitwise_or = auto()
+    bitwise_left_step = auto()
+    bitwise_right_step = auto()
 
     def __repr__(self):
         return f'{self.name.upper()}'
@@ -70,7 +74,8 @@ class Compiler:
                           '%': calc.mod,
                           '**': calc.power,
                           '<': calc.lt, '>': calc.gt, '<=': calc.le, '>=': calc.ge, '==': calc.eq, '!=': calc.ne,
-                          '^': calc.bitwise_xor, '&': calc.bitwise_and, '|': calc.bitwise_or}
+                          '^': calc.bitwise_xor, '&': calc.bitwise_and, '|': calc.bitwise_or,
+                          '<<': calc.bitwise_left_step, '>>': calc.bitwise_right_step}
         self.back_label = []
         self.back_map = {}
         self.loop_bounds = None
