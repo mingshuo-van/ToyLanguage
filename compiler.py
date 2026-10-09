@@ -23,7 +23,6 @@ class code(IntEnum):
     read_index = auto()
     jump_if_false = auto()
     jump_if_true = auto()
-    be_not = auto()
     jump = auto()
     get_list = auto()
     get_dict = auto()
@@ -66,6 +65,12 @@ class Compiler:
                              While_stmt: self.while_node, List: self.process_List_and_Dict,
                              Dict: self.process_List_and_Dict,
                              Assign_expr: self.assign, Index_expr: self.read}
+        self.need_pop = {Assign_expr, Binary_expr, List, Dict, Unary_expr, Index_expr, Id}
+        self.binary_op = {'+': calc.add, '-': calc.sub, '*': calc.mul, '//': calc.div_int, '/': calc.div_float,
+                          '%': calc.mod,
+                          '**': calc.power,
+                          '<': calc.lt, '>': calc.gt, '<=': calc.le, '>=': calc.ge, '==': calc.eq, '!=': calc.ne,
+                          '^': calc.bitwise_xor, '&': calc.bitwise_and, '|': calc.bitwise_or}
         self.back_label = []
         self.back_map = {}
         self.loop_bounds = None
@@ -98,6 +103,8 @@ class Compiler:
                     self.add_code_label(code.jump, self.loop_bounds[0])
         else:
             self.need_compile[t](node)
+        if self.node_level == 1 and t in self.need_pop:
+            self.bytecodes.append((code.pop,))
         self.node_level -= 1
         return res
 
@@ -126,8 +133,6 @@ class Compiler:
             self.compile(left)
             self.compile(right[0])
             self.bytecodes.append((code.read_index,))
-        if self.node_level == 1:
-            self.bytecodes.append((code.pop,))
 
     def assign(self, node):
         op, left, right = node.op, node.left, node.right
@@ -143,64 +148,10 @@ class Compiler:
                 self.compile(left.right[0])
                 self.compile(right)
                 self.bytecodes.append((code.write_index,))
-        if self.node_level == 1:
-            self.bytecodes.append((code.pop,))
 
     def binary_node(self, node):
         op, left, right = node.op, node.left, node.right
-        if op == '+':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.add,))
-        elif op == '-':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.sub,))
-        elif op == '*':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.mul,))
-        elif op == '/':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.div_float,))
-        elif op == '//':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.div_int,))
-        elif op == '<':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.lt,))
-        elif op == '>':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.gt,))
-        elif op == '<=':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.le,))
-        elif op == '>=':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.ge,))
-        elif op == '==':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.eq,))
-        elif op == '!=':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.ne,))
-        elif op == '%':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.mod,))
-        elif op == '**':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.power,))
-        elif op == '&&':
+        if op == '&&':
             false_label = object()
             end = object()
             self.compile(left)
@@ -224,21 +175,10 @@ class Compiler:
             self.record_label_location(true_label)
             self.bytecodes.append((code.push, True))
             self.record_label_location(end)
-        elif op == '^':
+        else:
             self.compile(left)
             self.compile(right)
-            self.bytecodes.append((calc.bitwise_xor,))
-        elif op == '&':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.bitwise_and,))
-        elif op == '|':
-            self.compile(left)
-            self.compile(right)
-            self.bytecodes.append((calc.bitwise_or,))
-
-        if self.node_level == 1:
-            self.bytecodes.append((code.pop,))
+            self.bytecodes.append((self.binary_op[op],))
 
     def compile_block(self, body):
         # 重置节点层级，保证pop指令的添加无误
