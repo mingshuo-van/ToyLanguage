@@ -62,6 +62,15 @@ class Interpreter_bytecode:
             lambda val: -val
         ]
 
+    def get_target_object(self, num):
+        v = [0] * num
+        for i in range(num):
+            v[i] = self.stack.pop()
+            if type(v[i]) is Index:
+                index = v[i].index
+                v[i] = self.hash_map[index] if index in self.hash_map else self.unhash_map[index]
+        return v if len(v) > 1 else v[0]
+
     def do(self):
         """
         执行字节码
@@ -78,26 +87,18 @@ class Interpreter_bytecode:
             elif op is code.pop:
                 self.stack.pop()
             elif op is code.write:
-                right = self.stack.pop()
-                left = self.stack.pop()
-                if type(left) is Index:
-                    index = left.index
-                    left = self.hash_map[index] if index in self.hash_map else self.unhash_map[index]
+                right, left = self.get_target_object(2)
                 self.env[left] = right
                 self.stack.append(right)
             elif op is code.read:
-                head = self.stack.pop()
-                if type(head) is Index:
-                    index = head.index
-                    head = self.hash_map[index] if index in self.hash_map else self.unhash_map[index]
+                head = self.get_target_object(1)
                 self.stack.append(self.env[head])
             elif op is code.write_index:
-                value, index, arr = self.stack.pop(), self.stack.pop(), self.stack.pop()
+                value, index, arr = self.get_target_object(3)
                 arr[index] = value
                 self.stack.append(value)
             elif op is code.read_index:
-                right = self.stack.pop()
-                left = self.stack.pop()
+                right, left = self.get_target_object(2)
                 self.stack.append(left[right])
             elif op is code.get_list:
                 size = cur[1]
@@ -108,21 +109,19 @@ class Interpreter_bytecode:
                 size = cur[1]
                 arr = {}
                 for i in range(size):
-                    right = self.stack.pop()
-                    left = self.stack.pop()
+                    right, left = self.get_target_object(2)
                     arr[left] = right
                 self.stack.append(dict(reversed(list(arr.items()))))
             elif op is code.jump_if_false:
-                if not self.stack.pop():
+                if not self.get_target_object(1):
                     self.pc = cur[1]
             elif op is code.jump_if_true:
-                if self.stack.pop():
+                if self.get_target_object(1):
                     self.pc = cur[1]
             elif op is code.jump:
                 self.pc = cur[1]
             elif op <= calc.bitwise_right_step:
-                right = self.stack.pop()
-                left = self.stack.pop()
+                right, left = self.get_target_object(2)
                 self.stack.append(self.op_calc[op](left, right))
             elif op <= calc.neg:
-                self.stack.append(self.op_calc[op](self.stack.pop()))
+                self.stack.append(self.op_calc[op](self.get_target_object(1)))
