@@ -55,7 +55,8 @@ class Interpreter_bytecode:
                 self.stack.append(left[right])
             elif op is code.get_list:
                 size = cur[1]
-                arr = [self.stack.pop() for _ in range(size)]
+                arr = self.stack[-size:]
+                self.stack = self.stack[:-size]
                 self.stack.append(list(reversed(arr)))
             elif op is code.get_dict:
                 size = cur[1]
