@@ -18,7 +18,9 @@ c.do()
 for idx,i in enumerate(c.bytecodes):
     print(f'{idx}------{i}')
 
-i = Interpreter_bytecode(c.bytecodes)
+i = Interpreter_bytecode(c.bytecodes,c.hash_map,c.unhash_map)
 i.do()
-print(i.env)
-print(i.stack)
+print(f'env:\n{i.env}')
+print(f'stack:\n{i.stack}')
+print(f'hash_map:\n{i.hash_map}')
+print(f'unhash_map:\n{i.unhash_map}')

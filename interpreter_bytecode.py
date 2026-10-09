@@ -3,6 +3,15 @@ from math import gamma, factorial
 from Object import *
 
 
+class Index:
+    """
+    包装是否在 hash_map 和 unhash_map 中存在
+    """
+
+    def __init__(self, index):
+        self.index = index
+
+
 def fac(n):
     """
     计算阶乘的函数
@@ -20,14 +29,15 @@ def fac(n):
 
 
 class Interpreter_bytecode:
-    def __init__(self, bytecodes):
+    def __init__(self, bytecodes, hash_map, unhash_map):
         self.bytecodes = bytecodes
+        self.hash_map = {v: k for k, v in hash_map.items()}
+        self.unhash_map = unhash_map
         self.stack = []
         self.env = {}
         self.pc = 0
         self.size = len(bytecodes)
         self.op_calc = [
-            None,
             lambda x, y: x + y,
             lambda x, y: x - y,
             lambda x, y: x * y,
@@ -63,15 +73,23 @@ class Interpreter_bytecode:
             op = cur[0]
             if op is code.push:
                 self.stack.append(cur[1])
+            elif op is code.push_index:
+                self.stack.append(Index(cur[1]))
             elif op is code.pop:
                 self.stack.pop()
             elif op is code.write:
                 right = self.stack.pop()
                 left = self.stack.pop()
+                if type(left) is Index:
+                    index = left.index
+                    left = self.hash_map[index] if index in self.hash_map else self.unhash_map[index]
                 self.env[left] = right
                 self.stack.append(right)
             elif op is code.read:
                 head = self.stack.pop()
+                if type(head) is Index:
+                    index = head.index
+                    head = self.hash_map[index] if index in self.hash_map else self.unhash_map[index]
                 self.stack.append(self.env[head])
             elif op is code.write_index:
                 value, index, arr = self.stack.pop(), self.stack.pop(), self.stack.pop()

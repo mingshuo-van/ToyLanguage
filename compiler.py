@@ -13,11 +13,30 @@ from Object import *
                  bitwise_right_step
 单操作数算数操作： logic_not bitwise_not fac neg
 '''
-from enum import IntEnum, auto
+from enum import IntEnum
+
+
+def get_counter():
+    """
+    得到一个计数器的counter
+    :return:
+    """
+    n = 0
+
+    def inner_counter():
+        nonlocal n
+        n += 1
+        return n - 1
+
+    return inner_counter
+
+
+auto = get_counter()
 
 
 class code(IntEnum):
     push = auto()
+    push_index = auto()
     pop = auto()
     write = auto()
     read = auto()
@@ -31,6 +50,9 @@ class code(IntEnum):
 
     def __repr__(self):
         return f'{self.name.upper()}'
+
+
+auto = get_counter()
 
 
 class calc(IntEnum):
@@ -62,6 +84,19 @@ class calc(IntEnum):
         return f'{self.name.upper()}'
 
 
+def is_hashable(node):
+    """
+    判断对象是否可哈希
+    :param node: 要判断的对象
+    :return: 可以 True 不可以 False
+    """
+    try:
+        hash(node)
+        return True
+    except TypeError:
+        return False
+
+
 class Compiler:
 
     def __init__(self, ast):
@@ -85,7 +120,10 @@ class Compiler:
         self.unary_op = {'not': calc.logic_not, '~': calc.bitwise_not, '!': calc.fac, '-': calc.neg}
         self.back_label = []
         self.back_map = {}
+        self.hash_map = {}
+        self.unhash_map = {}
         self.loop_bounds = None
+        self.counter = get_counter()
 
     def do(self):
         """
@@ -109,7 +147,19 @@ class Compiler:
         res = None
         t = type(node)
         if t in self.direct_add:
-            self.bytecodes.append((code.push, node))
+            if t is str:
+                if node in self.hash_map:
+                    flag = self.hash_map[node]
+                else:
+                    flag = self.counter()
+                    self.hash_map[node] = flag
+                self.bytecodes.append((code.push_index, flag))
+            elif t is list or t is dict:
+                flag = self.counter()
+                self.unhash_map[flag] = node
+                self.bytecodes.append((code.push_index, flag))
+            else:
+                self.bytecodes.append((code.push, node))
         elif t in self.direct_ret_type:
             res = t
             if t is Break_stmt:
@@ -155,7 +205,13 @@ class Compiler:
         """
         t = type(node)
         if t is Id:
-            self.bytecodes.append((code.push, node.id))
+            name = node.id
+            if name in self.hash_map:
+                flag = self.hash_map[name]
+            else:
+                flag = self.counter()
+                self.hash_map[name] = flag
+            self.bytecodes.append((code.push_index, flag))
             self.bytecodes.append((code.read,))
         else:
             left = node.left
@@ -175,7 +231,13 @@ class Compiler:
         if op == '=':
             t = type(left)
             if t is Id:
-                self.bytecodes.append((code.push, left.id))
+                name = left.id
+                if name in self.hash_map:
+                    flag = self.hash_map[name]
+                else:
+                    flag = self.counter()
+                    self.hash_map[name] = flag
+                self.bytecodes.append((code.push_index, flag))
                 self.compile(right)
                 self.bytecodes.append((code.write,))
             else:
