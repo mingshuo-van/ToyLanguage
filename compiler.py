@@ -88,6 +88,10 @@ class Compiler:
         self.loop_bounds = None
 
     def do(self):
+        """
+        生成字节码
+        :return: 字节码
+        """
         for i in self.ast:
             self.compile(i)
         # 标记回填具体数值
@@ -96,6 +100,11 @@ class Compiler:
         return self.bytecodes
 
     def compile(self, node):
+        """
+        compile 分派
+        :param node: 语法树节点
+        :return: None | 类型
+        """
         self.node_level += 1
         res = None
         t = type(node)
@@ -121,6 +130,11 @@ class Compiler:
         return res
 
     def process_List_and_Dict(self, node):
+        """
+        生成字典和列表相关的字节码
+        :param node: List | Dict
+        :return: None
+        """
         if type(node) is List:
             size = len(node.val)
             for i in node.val:
@@ -134,6 +148,11 @@ class Compiler:
             self.bytecodes.append((code.get_dict, size))
 
     def read(self, node):
+        """
+        生成读变量的字节码
+        :param node: Id | IndexError
+        :return: None
+        """
         t = type(node)
         if t is Id:
             self.bytecodes.append((code.push, node.id))
@@ -147,6 +166,11 @@ class Compiler:
             self.bytecodes.append((code.read_index,))
 
     def assign(self, node):
+        """
+        生成写变量的字节码
+        :param node: Assign
+        :return: None
+        """
         op, left, right = node.op, node.left, node.right
         if op == '=':
             t = type(left)
@@ -162,11 +186,21 @@ class Compiler:
                 self.bytecodes.append((code.write_index,))
 
     def unary_node(self, node):
+        """
+        单目运算符字节码
+        :param node: Unary
+        :return: None
+        """
         op, val = node.op, node.val
         self.compile(val)
         self.bytecodes.append((self.unary_op[op],))
 
     def binary_node(self, node):
+        """
+        双目运算符字节码
+        :param node: Binary
+        :return: None
+        """
         op, left, right = node.op, node.left, node.right
         if op == '&&':
             false_label = object()
@@ -198,6 +232,11 @@ class Compiler:
             self.bytecodes.append((self.binary_op[op],))
 
     def compile_block(self, body):
+        """
+        生成局部块的字节码
+        :param body: 一个块容器
+        :return: None
+        """
         # 重置节点层级，保证pop指令的添加无误
         old = self.node_level
         self.node_level = 0
@@ -210,13 +249,29 @@ class Compiler:
         self.node_level = old
 
     def add_code_label(self, code_op, label):
+        """
+        增加一条带有标记的跳转字节码
+        :param code_op: 字节码类型
+        :param label: 标记
+        :return: None
+        """
         self.back_label.append((len(self.bytecodes), label))
         self.bytecodes.append((code_op, label))
 
     def record_label_location(self, label):
+        """
+        记录某个标记的具体绝对位置
+        :param label: 标记
+        :return: None
+        """
         self.back_map[label] = len(self.bytecodes)
 
     def if_node(self, node):
+        """
+        生成 if 语句的字节码
+        :param node: if
+        :return: None
+        """
         condition, then, if_list, otherwise = node.condition, node.then, node.if_list, node.otherwise
         self.compile(condition)
         next_label = object()
@@ -243,6 +298,11 @@ class Compiler:
             self.record_label_location(end)
 
     def while_node(self, node):
+        """
+        生成 while 语句的字节码
+        :param node: while
+        :return: None
+        """
         old = self.loop_bounds
         condition = node.condition
         then = node.then

@@ -53,6 +53,10 @@ class Interpreter_bytecode:
         ]
 
     def do(self):
+        """
+        执行字节码
+        :return: None
+        """
         while self.pc < self.size:
             cur = self.bytecodes[self.pc]
             self.pc += 1
