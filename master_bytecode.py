@@ -11,8 +11,9 @@ with open(file,'r') as f:
 t = Tokenizer(file)
 p = Parser(t.tokenize())
 o = Optimizer(p.stmt_list())
-# o.optimize()
-print(o.ast)
+o.optimize()
+for idx,i in enumerate(o.ast):
+    print(f'{idx}------{i}')
 c = Compiler(o.ast)
 c.do()
 for idx,i in enumerate(c.bytecodes):
