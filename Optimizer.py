@@ -134,10 +134,13 @@ class Optimizer:
             if is_bool_double_neg_form(node):
                 # 消除一对双重否定后生成的新节点可能仍有优化的空间
                 node = self.bool_optimize(node.val.val)
-        elif t is Binary_expr:
+        elif t is Binary_expr or t is Index_expr or t is Index_expr:
             # 先计算子节点
             node.left = self.bool_optimize(node.left)
-            node.right = self.bool_optimize(node.right)
+            if t is Index_expr:
+                node.right = [self.bool_optimize(i) for i in node.right]
+            else:
+                node.right = self.bool_optimize(node.right)
             if is_bool_morgan_form(node):
                 op = '&&' if node.op == '||' else '||'
                 # 因为上面已经做过递归优化子节点，所以左右节点的节点也已经是优化过的了，直接取值即可
@@ -238,11 +241,14 @@ class Optimizer:
                         node = not val.val
             except (ValueError, TypeError) as e:
                 raise Lang_Err(e.__class__.__name__, str(e))
-        elif t is Binary_expr:
+        elif t is Binary_expr or t is Assign_expr or t is Index_expr:
             # 递归处理双目的子节点，保证当前节点处理时其子节点已经是最优
             node.left = left = self.fold_constance(node.left)
-            node.right = right = self.fold_constance(node.right)
-            op = node.op
+            if t is Index_expr:
+                node.right = right = [self.fold_constance(i) for i in node.right]
+            else:
+                node.right = right = self.fold_constance(node.right)
+            op = None if t is Index_expr else node.op
             x = type(left)
             y = type(right)
             xi = x in self.literal_used
@@ -380,4 +386,3 @@ class Optimizer:
             except Lang_Err:
                 # 保证try catch 可以捕获
                 pass
-
