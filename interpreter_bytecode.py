@@ -28,12 +28,25 @@ def fac(n):
     return factorial(n)
 
 
+class Func:
+
+    def __init__(self, name, var_list, scope, parent=None):
+        self.name = name
+        self.var_list = var_list
+        self.scope = scope
+        self.parent = parent
+
+    def __repr__(self):
+        return f'(Func {self.name} {self.var_list})'
+
+
 class Interpreter_bytecode:
     def __init__(self, bytecodes, hash_map, unhash_map):
         self.bytecodes = bytecodes
         self.hash_map = {v: k for k, v in hash_map.items()}
         self.unhash_map = unhash_map
-        self.stack = []
+        self.stack_data = []
+        self.stack_frame = []
         self.env = {}
         self.pc = 0
         self.size = len(bytecodes)
@@ -65,7 +78,7 @@ class Interpreter_bytecode:
     def get_target_object(self, num):
         v = [0] * num
         for i in range(num):
-            v[i] = self.stack.pop()
+            v[i] = self.stack_data.pop()
             if type(v[i]) is Index:
                 index = v[i].index
                 v[i] = self.hash_map[index] if index in self.hash_map else self.unhash_map[index]
@@ -81,37 +94,37 @@ class Interpreter_bytecode:
             self.pc += 1
             op = cur[0]
             if op is code.push:
-                self.stack.append(cur[1])
+                self.stack_data.append(cur[1])
             elif op is code.push_index:
-                self.stack.append(Index(cur[1]))
+                self.stack_data.append(Index(cur[1]))
             elif op is code.pop:
-                self.stack.pop()
+                self.stack_data.pop()
             elif op is code.write:
                 right, left = self.get_target_object(2)
                 self.env[left] = right
-                self.stack.append(right)
+                self.stack_data.append(right)
             elif op is code.read:
                 head = self.get_target_object(1)
-                self.stack.append(self.env[head])
+                self.stack_data.append(self.env[head])
             elif op is code.write_index:
                 value, index, arr = self.get_target_object(3)
                 arr[index] = value
-                self.stack.append(value)
+                self.stack_data.append(value)
             elif op is code.read_index:
                 right, left = self.get_target_object(2)
-                self.stack.append(left[right])
+                self.stack_data.append(left[right])
             elif op is code.get_list:
                 size = cur[1]
                 arr = self.get_target_object(size)
                 arr.reverse()
-                self.stack.append(arr)
+                self.stack_data.append(arr)
             elif op is code.get_dict:
                 size = cur[1]
                 arr = {}
                 for i in range(size):
                     right, left = self.get_target_object(2)
                     arr[left] = right
-                self.stack.append(dict(reversed(list(arr.items()))))
+                self.stack_data.append(dict(reversed(list(arr.items()))))
             elif op is code.jump_if_false:
                 if not self.get_target_object(1):
                     self.pc = cur[1]
@@ -120,8 +133,18 @@ class Interpreter_bytecode:
                     self.pc = cur[1]
             elif op is code.jump:
                 self.pc = cur[1]
+            elif op is code.call_register:
+                scope, var_list, name = self.get_target_object(3)
+                hash_map = {}
+                for k, v in scope['hash_map'].items():
+                    hash_map[v] = k
+                scope['hash_map'] = hash_map
+                self.env[name] = Func(name, var_list, scope, parent=self.env)
+            elif op is code.call:
+                var_list, func = self.get_target_object(2)
+                self.stack_frame.append((self.pc, func))
             elif op <= calc.bitwise_right_step:
                 right, left = self.get_target_object(2)
-                self.stack.append(self.op_calc[op](left, right))
+                self.stack_data.append(self.op_calc[op](left, right))
             elif op <= calc.neg:
-                self.stack.append(self.op_calc[op](self.get_target_object(1)))
+                self.stack_data.append(self.op_calc[op](self.get_target_object(1)))

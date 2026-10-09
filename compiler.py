@@ -12,6 +12,9 @@ from Object import *
 双操作数算数操作： add sub mul div mod power lt gt le ge eq ne and or bitwise_xor bitwise_and bitwise_or bitwise_left_step 
                  bitwise_right_step
 单操作数算数操作： logic_not bitwise_not fac neg
+函数注册： call_register
+函数调用： call
+函数返回： ret
 '''
 from enum import IntEnum
 
@@ -47,6 +50,9 @@ class code(IntEnum):
     jump = auto()
     get_list = auto()
     get_dict = auto()
+    call_register = auto()
+    call = auto()
+    ret = auto()
 
     def __repr__(self):
         return f'{self.name.upper()}'
@@ -109,7 +115,10 @@ class Compiler:
                              While_stmt: self.while_node, List: self.process_List_and_Dict,
                              Dict: self.process_List_and_Dict,
                              Assign_expr: self.assign, Index_expr: self.read,
-                             Unary_expr: self.unary_node}
+                             Unary_expr: self.unary_node,
+                             Call_define_stmt: self.call_define,
+                             Return_stmt: self.ret_node,
+                             Call_stmt: self.call}
         self.need_pop = {Assign_expr, Binary_expr, List, Dict, Unary_expr, Index_expr, Id}
         self.binary_op = {'+': calc.add, '-': calc.sub, '*': calc.mul, '//': calc.div_int, '/': calc.div_float,
                           '%': calc.mod,
@@ -125,6 +134,37 @@ class Compiler:
         self.loop_bounds = None
         self.counter = get_counter()
 
+    def get_hash_flag(self, name):
+        """
+        得到对应元素的flag
+        :param name: 一些可哈希对象
+        :return: int
+        """
+        if name in self.hash_map:
+            flag = self.hash_map[name]
+        else:
+            flag = self.counter()
+            self.hash_map[name] = flag
+        return flag
+
+    def get_unhash_flag(self, name):
+        """
+        得到对应元素的flag
+        :param name: 一些不可哈希对象
+        :return: int
+        """
+        flag = self.counter()
+        self.unhash_map[flag] = name
+        return flag
+
+    def real_write_label_location(self):
+        """
+        标记回填具体数值
+        :return: None
+        """
+        for index, label in self.back_label:
+            self.bytecodes[index] = (self.bytecodes[index][0], self.back_map[label])
+
     def do(self):
         """
         生成字节码
@@ -132,9 +172,7 @@ class Compiler:
         """
         for i in self.ast:
             self.compile(i)
-        # 标记回填具体数值
-        for index, label in self.back_label:
-            self.bytecodes[index] = (self.bytecodes[index][0], self.back_map[label])
+        self.real_write_label_location()
         return self.bytecodes
 
     def compile(self, node):
@@ -148,15 +186,10 @@ class Compiler:
         t = type(node)
         if t in self.direct_add:
             if t is str:
-                if node in self.hash_map:
-                    flag = self.hash_map[node]
-                else:
-                    flag = self.counter()
-                    self.hash_map[node] = flag
+                flag = self.get_hash_flag(node)
                 self.bytecodes.append((code.push_index, flag))
             elif t is list or t is dict:
-                flag = self.counter()
-                self.unhash_map[flag] = node
+                flag = self.get_unhash_flag(node)
                 self.bytecodes.append((code.push_index, flag))
             else:
                 self.bytecodes.append((code.push, node))
@@ -205,12 +238,7 @@ class Compiler:
         """
         t = type(node)
         if t is Id:
-            name = node.id
-            if name in self.hash_map:
-                flag = self.hash_map[name]
-            else:
-                flag = self.counter()
-                self.hash_map[name] = flag
+            flag = self.get_hash_flag(node.id)
             self.bytecodes.append((code.push_index, flag))
             self.bytecodes.append((code.read,))
         else:
@@ -231,12 +259,7 @@ class Compiler:
         if op == '=':
             t = type(left)
             if t is Id:
-                name = left.id
-                if name in self.hash_map:
-                    flag = self.hash_map[name]
-                else:
-                    flag = self.counter()
-                    self.hash_map[name] = flag
+                flag = self.get_hash_flag(left.id)
                 self.bytecodes.append((code.push_index, flag))
                 self.compile(right)
                 self.bytecodes.append((code.write,))
@@ -246,6 +269,56 @@ class Compiler:
                 self.compile(left.right[0])
                 self.compile(right)
                 self.bytecodes.append((code.write_index,))
+
+    def ret_node(self, node):
+        """
+        生成 ret 字节码
+        :param node: return
+        :return: None
+        """
+        self.compile(node.val)
+        self.bytecodes.append((code.push,))
+
+    def call_define(self, node):
+        """
+        函数注册字节码生成
+        :param node: call_define
+        :return: None
+        """
+        name, var_list, body = node.name, node.vars, node.body
+        # 临时修改以bytecodes为代表的多个容器的指向，以存储函数执行体的字节码进独立的块并控制独立的常量池
+        old = [self.bytecodes, self.back_label, self.back_map, self.hash_map, self.unhash_map, self.loop_bounds,
+               self.counter]
+        self.bytecodes = []
+        self.back_label = []
+        self.back_map = {}
+        self.hash_map = {}
+        self.unhash_map = {}
+        self.loop_bounds = None
+        self.counter = get_counter()
+        for i in body:
+            self.compile(i)
+        self.real_write_label_location()
+        scope = {'bytecodes': self.bytecodes, 'hash_map': self.hash_map, 'unhash_map': self.unhash_map}
+        self.bytecodes, self.back_label, self.back_map, self.hash_map, self.unhash_map, self.loop_bounds, self.counter = old
+
+        self.bytecodes.append((code.push_index, self.get_hash_flag(name.id)))
+
+        for index, i in enumerate(var_list):
+            var_list[index] = i.id
+
+        self.bytecodes.append((code.push_index, self.get_unhash_flag(var_list)))
+
+        self.bytecodes.append((code.push_index, self.get_unhash_flag(scope)))
+
+        self.bytecodes.append((code.call_register,))
+
+    def call(self, node):
+        name, var_list = node.name, node.vars
+
+        self.compile(name)
+        self.bytecodes.append((code.push_index, self.get_unhash_flag(var_list)))
+        self.bytecodes.append((code.call,))
 
     def unary_node(self, node):
         """
