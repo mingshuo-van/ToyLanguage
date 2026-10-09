@@ -1,4 +1,22 @@
 from compiler import code, calc
+from math import gamma, factorial
+from Object import *
+
+
+def fac(n):
+    """
+    计算阶乘的函数
+    :param n: 被施加阶乘计算的数
+    :return: 计算后的数
+    """
+    t = type(n)
+    if t is not int and t is not float:
+        raise Lang_Err('TypeError', f'{n} is not int or float')
+    if n < 0 and n == int(n):
+        raise Lang_Err('ValueError', f'{n}! need the num >= 0 or type(num) is float')
+    if type(n) is float:
+        return gamma(n + 1)
+    return factorial(n)
 
 
 class Interpreter_bytecode:
@@ -27,7 +45,11 @@ class Interpreter_bytecode:
             lambda x, y: x & y,
             lambda x, y: x | y,
             lambda x, y: x << y,
-            lambda x, y: x >> y
+            lambda x, y: x >> y,
+            lambda val: not val,
+            lambda val: ~val,
+            lambda val: fac(val),
+            lambda val: -val
         ]
 
     def do(self):
@@ -80,3 +102,5 @@ class Interpreter_bytecode:
                 right = self.stack.pop()
                 left = self.stack.pop()
                 self.stack.append(self.op_calc[op](left, right))
+            elif op <= calc.neg:
+                self.stack.append(self.op_calc[op](self.stack.pop()))

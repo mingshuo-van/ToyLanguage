@@ -53,6 +53,11 @@ class calc(IntEnum):
     bitwise_left_step = auto()
     bitwise_right_step = auto()
 
+    logic_not = auto()
+    bitwise_not = auto()
+    fac = auto()
+    neg = auto()
+
     def __repr__(self):
         return f'{self.name.upper()}'
 
@@ -68,7 +73,8 @@ class Compiler:
         self.need_compile = {Binary_expr: self.binary_node, Id: self.read, If_stmt: self.if_node,
                              While_stmt: self.while_node, List: self.process_List_and_Dict,
                              Dict: self.process_List_and_Dict,
-                             Assign_expr: self.assign, Index_expr: self.read}
+                             Assign_expr: self.assign, Index_expr: self.read,
+                             Unary_expr: self.unary_node}
         self.need_pop = {Assign_expr, Binary_expr, List, Dict, Unary_expr, Index_expr, Id}
         self.binary_op = {'+': calc.add, '-': calc.sub, '*': calc.mul, '//': calc.div_int, '/': calc.div_float,
                           '%': calc.mod,
@@ -76,6 +82,7 @@ class Compiler:
                           '<': calc.lt, '>': calc.gt, '<=': calc.le, '>=': calc.ge, '==': calc.eq, '!=': calc.ne,
                           '^': calc.bitwise_xor, '&': calc.bitwise_and, '|': calc.bitwise_or,
                           '<<': calc.bitwise_left_step, '>>': calc.bitwise_right_step}
+        self.unary_op = {'not': calc.logic_not, '~': calc.bitwise_not, '!': calc.fac, '-': calc.neg}
         self.back_label = []
         self.back_map = {}
         self.loop_bounds = None
@@ -153,6 +160,11 @@ class Compiler:
                 self.compile(left.right[0])
                 self.compile(right)
                 self.bytecodes.append((code.write_index,))
+
+    def unary_node(self, node):
+        op, val = node.op, node.val
+        self.compile(val)
+        self.bytecodes.append((self.unary_op[op],))
 
     def binary_node(self, node):
         op, left, right = node.op, node.left, node.right
