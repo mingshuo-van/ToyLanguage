@@ -266,12 +266,12 @@ class Interpreter_bytecode:
             elif op is code.ret:
                 res = self.stack_data[-1]
                 self.end_func()
-                # 进入新环境可以包装一次
+                # 进入新环境可以尝试包装成内置类型一次
                 self.stack_data.append(get_inner_object(res))
                 self.pc = self.stack_frame.pop()[0]
                 self.size = len(self.bytecodes)
             elif op is code.get_origin:
-                # 因为如果被包装成 const_index 或者 var_index
+                # 因为如果某些量被包装成 const_index 或者 var_index
                 # 离开当前环境后索引就无效了
                 self.stack_data.append(self.get_target_object(1))
             elif op <= calc.bitwise_right_step:
