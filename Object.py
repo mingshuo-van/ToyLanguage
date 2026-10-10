@@ -79,6 +79,7 @@ class Assign_expr(Expression):
     def __repr__(self):
         return f'Assign_expr({self.op} {self.left} {self.right})'
 
+
 class Index_expr(Expression):
     """
     getitem语义
@@ -323,3 +324,108 @@ class Lang_Err(Exception):
 
     def __repr__(self):
         return f'{self.name}:{self.description}'
+
+
+class Inner:
+    def __init__(self):
+        self.val = None
+
+
+class InnerInt(Inner):
+    """
+    内置 int 包装
+    """
+
+    def __init__(self, val):
+        super().__init__()
+        self.val = int(val)
+
+    def __repr__(self):
+        return f'InnerInt({self.val})'
+
+    def __str__(self):
+        return int.__str__(self.val)
+
+    def __eq__(self, other):
+        return type(other) is InnerInt and other.val == self.val
+
+    def __hash__(self):
+        return hash((self.val, 'int'))
+
+    def __bool__(self):
+        return bool(self.val)
+
+
+class InnerFloat(Inner):
+    """
+    内置 float 包装
+    """
+
+    def __init__(self, val):
+        super().__init__()
+        self.val = float(val)
+
+    def __repr__(self):
+        return f'InnerFloat({self.val})'
+
+    def __str__(self):
+        return float.__str__(self.val)
+
+    def __eq__(self, other):
+        return type(other) is InnerFloat and other.val == self.val
+
+    def __hash__(self):
+        return hash((self.val, 'float'))
+
+    def __bool__(self):
+        return bool(self.val)
+
+
+class InnerStr(Inner):
+    """
+    内置 str 包装
+    """
+
+    def __init__(self, val):
+        super().__init__()
+        self.val = str(val)
+
+    def __repr__(self):
+        return f'InnerStr({self.val!r})'
+
+    def __str__(self):
+        return str.__str__(self.val)
+
+    def __eq__(self, other):
+        return type(other) is InnerStr and other.val == self.val
+
+    def __hash__(self):
+        return hash((self.val, 'str'))
+
+    def __bool__(self):
+        return bool(self.val)
+
+
+class InnerBool(Inner):
+    """
+    内置 bool 包装
+    """
+
+    def __init__(self, val):
+        super().__init__()
+        self.val = bool(val)
+
+    def __repr__(self):
+        return f'InnerBool({self.val})'
+
+    def __str__(self):
+        return 'true' if self.val else 'false'
+
+    def __eq__(self, other):
+        return type(other) is InnerBool and other.val == self.val
+
+    def __hash__(self):
+        return hash((self.val, 'bool'))
+
+    def __bool__(self):
+        return bool(self.val)

@@ -39,7 +39,8 @@ auto = get_counter()
 
 class code(IntEnum):
     push = auto()
-    push_index = auto()
+    push_var_index = auto()
+    push_const_index = auto()
     pop = auto()
     write = auto()
     read = auto()
@@ -109,7 +110,6 @@ class Compiler:
         self.node_level = 0
         self.ast = ast
         self.bytecodes = []
-        self.direct_add = {int, float, bool, str, type(None), list, dict}
         self.direct_ret_type = {Break_stmt, Continue_stmt}
         self.need_compile = {Binary_expr: self.binary_node, Id: self.read, If_stmt: self.if_node,
                              While_stmt: self.while_node, List: self.process_List_and_Dict,
@@ -118,8 +118,9 @@ class Compiler:
                              Unary_expr: self.unary_node,
                              Call_define_stmt: self.call_define,
                              Return_stmt: self.ret_node,
-                             Call_stmt: self.call}
-        self.need_pop = {Assign_expr, Binary_expr, List, Dict, Unary_expr, Index_expr, Id}
+                             Call_stmt: self.call,
+                             int: self.inner, float: self.inner, str: self.inner, bool: self.inner}
+        self.need_pop = {Assign_expr, Binary_expr, List, Dict, Unary_expr, Index_expr, Id, Call_stmt}
         self.binary_op = {'+': calc.add, '-': calc.sub, '*': calc.mul, '//': calc.div_int, '/': calc.div_float,
                           '%': calc.mod,
                           '**': calc.power,
@@ -129,23 +130,51 @@ class Compiler:
         self.unary_op = {'not': calc.logic_not, '~': calc.bitwise_not, '!': calc.fac, '-': calc.neg}
         self.back_label = []
         self.back_map = {}
-        self.hash_map = {}
+        self.varname = {}
+        self.consts = {}
         self.unhash_map = {}
         self.loop_bounds = None
         self.counter = get_counter()
+        self.varname_counter = get_counter()
+        self.consts_counter = get_counter()
 
-    def get_hash_flag(self, name):
+    def inner(self, node):
         """
-        得到对应元素的flag
-        :param name: 一些可哈希对象
-        :return: int
+        处理 python 的内置元素包装
+        :param node: element
+        :return: None
         """
-        if name in self.hash_map:
-            flag = self.hash_map[name]
+        t = type(node)
+        if t is int:
+            f = InnerInt
+        elif t is float:
+            f = InnerFloat
+        elif t is str:
+            f = InnerStr
         else:
-            flag = self.counter()
-            self.hash_map[name] = flag
-        return flag
+            f = InnerBool
+        node = f(node)
+        self.bytecodes.append((code.push_const_index, self.get_consts_flag(node)))
+
+    def get_varname_flag(self, node):
+        """
+        得到变量名的 flag
+        :param node: 变量名
+        :return: flag
+        """
+        if node not in self.varname:
+            self.varname[node] = self.varname_counter()
+        return self.varname[node]
+
+    def get_consts_flag(self, node):
+        """
+        得到字面量的 flag
+        :param node: 字面量
+        :return: flag
+        """
+        if node not in self.consts:
+            self.consts[node] = self.consts_counter()
+        return self.consts[node]
 
     def get_unhash_flag(self, name):
         """
@@ -184,15 +213,8 @@ class Compiler:
         self.node_level += 1
         res = None
         t = type(node)
-        if t in self.direct_add:
-            if t is str:
-                flag = self.get_hash_flag(node)
-                self.bytecodes.append((code.push_index, flag))
-            elif t is list or t is dict:
-                flag = self.get_unhash_flag(node)
-                self.bytecodes.append((code.push_index, flag))
-            else:
-                self.bytecodes.append((code.push, node))
+        if t is None:
+            self.bytecodes.append((code.push, None))
         elif t in self.direct_ret_type:
             res = t
             if t is Break_stmt:
@@ -238,8 +260,8 @@ class Compiler:
         """
         t = type(node)
         if t is Id:
-            flag = self.get_hash_flag(node.id)
-            self.bytecodes.append((code.push_index, flag))
+            flag = self.get_varname_flag(node.id)
+            self.bytecodes.append((code.push_var_index, flag))
             self.bytecodes.append((code.read,))
         else:
             left = node.left
@@ -259,8 +281,8 @@ class Compiler:
         if op == '=':
             t = type(left)
             if t is Id:
-                flag = self.get_hash_flag(left.id)
-                self.bytecodes.append((code.push_index, flag))
+                flag = self.get_varname_flag(left.id)
+                self.bytecodes.append((code.push_var_index, flag))
                 self.compile(right)
                 self.bytecodes.append((code.write,))
             else:
@@ -277,7 +299,7 @@ class Compiler:
         :return: None
         """
         self.compile(node.val)
-        self.bytecodes.append((code.push,))
+        self.bytecodes.append((code.ret,))
 
     def call_define(self, node):
         """
@@ -302,16 +324,14 @@ class Compiler:
         scope = {'bytecodes': self.bytecodes, 'hash_map': self.hash_map, 'unhash_map': self.unhash_map}
         self.bytecodes, self.back_label, self.back_map, self.hash_map, self.unhash_map, self.loop_bounds, self.counter = old
 
-        self.bytecodes.append((code.push_index, self.get_hash_flag(name.id)))
+        self.bytecodes.append((code.push_var_index, self.get_varname_flag(name.id)))
 
-        for index, i in enumerate(var_list):
-            var_list[index] = i.id
-
-        self.bytecodes.append((code.push_index, self.get_unhash_flag(var_list)))
+        for i in var_list:
+            self.bytecodes.append((code.push_var_index, self.get_varname_flag(i.id)))
 
         self.bytecodes.append((code.push_index, self.get_unhash_flag(scope)))
 
-        self.bytecodes.append((code.call_register,))
+        self.bytecodes.append((code.call_register, len(var_list)))
 
     def call(self, node):
         name, var_list = node.name, node.vars
