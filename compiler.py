@@ -41,6 +41,7 @@ class code(IntEnum):
     push = auto()
     push_var_index = auto()
     push_const_index = auto()
+    push_func_index = auto()
     pop = auto()
     write = auto()
     read = auto()
@@ -132,9 +133,10 @@ class Compiler:
         self.back_map = {}
         self.varname = {}
         self.consts = {}
-        self.unhash_map = {}
+        self.func_scope = {}
+        self.old_compile_env = []
         self.loop_bounds = None
-        self.counter = get_counter()
+        self.func_counter = get_counter()
         self.varname_counter = get_counter()
         self.consts_counter = get_counter()
 
@@ -176,15 +178,39 @@ class Compiler:
             self.consts[node] = self.consts_counter()
         return self.consts[node]
 
-    def get_unhash_flag(self, name):
+    def get_func_scope_flag(self, node):
         """
         得到对应元素的flag
-        :param name: 一些不可哈希对象
+        :param node: 一些函数相关的对象
         :return: int
         """
-        flag = self.counter()
-        self.unhash_map[flag] = name
-        return flag
+        if node not in self.func_scope:
+            self.func_scope[node] = self.func_counter()
+        return self.func_scope[node]
+
+    def set_new_compile_env(self):
+        # 临时修改以bytecodes为代表的多个容器的指向，以存储函数执行体的字节码进独立的块并控制独立的常量池
+        self.old_compile_env.append(
+            [self.bytecodes, self.back_label, self.back_map, self.varname, self.consts, self.func_scope,
+             self.loop_bounds,
+             self.func_counter, self.varname_counter, self.consts_counter, []])
+        self.bytecodes = []
+        self.back_label = []
+        self.back_map = {}
+        self.varname = {}
+        self.consts = {}
+        self.func_scope = {}
+        self.loop_bounds = None
+        self.func_counter = get_counter()
+        self.varname_counter = get_counter()
+        self.consts_counter = get_counter()
+
+    def recovery_old_compile_env(self):
+        self.bytecodes, self.back_label, self.back_map, self.varname, self.consts, self.func_scope, \
+            self.loop_bounds, \
+            self.func_counter, self.varname_counter, self.consts_counter, cells = self.old_compile_env.pop()
+
+        return cells
 
     def real_write_label_location(self):
         """
@@ -254,7 +280,7 @@ class Compiler:
 
     def read(self, node):
         """
-        生成读变量的字节码
+        生成读变量的字节码，需要考虑在函数内部时寻找到闭包捕获的变量，然后记录在cells（当前该功能未实现）
         :param node: Id | IndexError
         :return: None
         """
@@ -308,37 +334,38 @@ class Compiler:
         :return: None
         """
         name, var_list, body = node.name, node.vars, node.body
-        # 临时修改以bytecodes为代表的多个容器的指向，以存储函数执行体的字节码进独立的块并控制独立的常量池
-        old = [self.bytecodes, self.back_label, self.back_map, self.hash_map, self.unhash_map, self.loop_bounds,
-               self.counter]
-        self.bytecodes = []
-        self.back_label = []
-        self.back_map = {}
-        self.hash_map = {}
-        self.unhash_map = {}
-        self.loop_bounds = None
-        self.counter = get_counter()
+        self.set_new_compile_env()
+        for i in var_list:
+            # 保证形参一定被记录在varname中
+            self.get_varname_flag(i.id)
         for i in body:
             self.compile(i)
+        if self.bytecodes[-1][0] is not code.ret:
+            self.bytecodes.append((code.push, None))
+            self.bytecodes.append((code.ret,))
         self.real_write_label_location()
-        scope = {'bytecodes': self.bytecodes, 'hash_map': self.hash_map, 'unhash_map': self.unhash_map}
-        self.bytecodes, self.back_label, self.back_map, self.hash_map, self.unhash_map, self.loop_bounds, self.counter = old
-
+        message = FuncMessage(self.bytecodes,
+                              {k: v for v, k in self.varname.items()},
+                              {k: v for v, k in self.consts.items()},
+                              {k: v for v, k in self.func_scope.items()},
+                              None)
+        cells = self.recovery_old_compile_env()
+        message.cells = cells
         self.bytecodes.append((code.push_var_index, self.get_varname_flag(name.id)))
-
         for i in var_list:
             self.bytecodes.append((code.push_var_index, self.get_varname_flag(i.id)))
 
-        self.bytecodes.append((code.push_index, self.get_unhash_flag(scope)))
+        self.bytecodes.append((code.push_func_index, self.get_func_scope_flag(message)))
 
-        self.bytecodes.append((code.call_register, len(var_list)))
+        self.bytecodes.append((code.call_register, len(var_list) + 2))
 
     def call(self, node):
         name, var_list = node.name, node.vars
-
-        self.compile(name)
-        self.bytecodes.append((code.push_index, self.get_unhash_flag(var_list)))
-        self.bytecodes.append((code.call,))
+        self.bytecodes.append((code.push_var_index, self.get_varname_flag(name.id)))
+        self.bytecodes.append((code.read,))
+        for i in var_list:
+            self.compile(i)
+        self.bytecodes.append((code.call, len(var_list) + 1))
 
     def unary_node(self, node):
         """

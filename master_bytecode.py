@@ -19,11 +19,11 @@ c.do()
 for idx, i in enumerate(c.bytecodes):
     print(f'{idx}------{i}')
 
-i = Interpreter_bytecode(c.bytecodes, c.varname, c.consts, c.unhash_map)
+i = Interpreter_bytecode(c.bytecodes, c.varname, c.consts, c.func_scope)
 i.do()
 print(f'env:\n{i.env}')
 print(f'stack_data:\n{i.stack_data}')
 print(f'stack_frame:\n{i.stack_frame}')
 print(f'varname:\n{i.varname}')
 print(f'consts:\n{i.consts}')
-print(f'unhash_map:\n{i.unhash_map}')
+print(f'func_scope:\n{i.func_scope}')

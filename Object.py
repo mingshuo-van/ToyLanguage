@@ -429,3 +429,44 @@ class InnerBool(Inner):
 
     def __bool__(self):
         return bool(self.val)
+
+
+class Cell:
+    """
+    闭包修饰
+    """
+
+    def __init__(self, val):
+        self.val = val
+
+
+class FuncMessage:
+    """
+    Func 信息
+    """
+
+    def __init__(self, bytecodes, varname, consts, func_scope, cells):
+        self.bytecodes = bytecodes
+        self.varname = varname
+        self.consts = consts
+        self.func_scope = func_scope
+        self.cells = cells
+
+    def __eq__(self, other):
+        if type(other) is not FuncMessage:
+            return False
+        if self.bytecodes != other.bytecodes:
+            return False
+        if self.consts != other.consts:
+            return False
+        if self.func_scope != other.func_scope:
+            return False
+        if self.cells != other.cells:
+            return False
+        return True
+
+    def __hash__(self):
+        return hash((str(self.bytecodes), str(self.varname), str(self.consts), str(self.func_scope), str(self.cells)))
+
+    def __repr__(self):
+        return str((str(self.bytecodes), str(self.varname), str(self.consts), str(self.func_scope), str(self.cells)))

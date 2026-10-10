@@ -21,6 +21,15 @@ class Const:
         self.index = index
 
 
+class FuncI:
+    """
+    包装在 func_scope 中存在
+    """
+
+    def __init__(self, index):
+        self.index = index
+
+
 def fac(n):
     """
     计算阶乘的函数
@@ -39,11 +48,12 @@ def fac(n):
 
 class Func:
 
-    def __init__(self, name, var_list, scope, parent=None):
+    def __init__(self, name, var_list, message, parent=None):
         self.name = name
         self.var_list = var_list
-        self.scope = scope
+        self.message = message
         self.parent = parent
+        self.env = {}
 
     def __repr__(self):
         return f'(Func {self.name} {self.var_list})'
@@ -62,7 +72,7 @@ def get_inner_object(node):
         f = InnerFloat
     elif t is str:
         f = InnerStr
-    elif t is float:
+    elif t is bool:
         f = InnerBool
     else:
         f = None
@@ -76,11 +86,11 @@ def get_origin_object(node):
 
 
 class Interpreter_bytecode:
-    def __init__(self, bytecodes, varname, consts, unhash_map):
+    def __init__(self, bytecodes, varname, consts, func_scope):
         self.bytecodes = bytecodes
         self.varname = {v: k for k, v in varname.items()}
         self.consts = {v: k for k, v in consts.items()}
-        self.unhash_map = unhash_map
+        self.func_scope = {v: k for k, v in func_scope.items()}
         self.stack_data = []
         self.stack_frame = []
         self.env = {}
@@ -111,6 +121,7 @@ class Interpreter_bytecode:
             lambda val: fac(val),
             lambda val: -val
         ]
+        self.old_message = []
 
     def get_target_object(self, num):
         v = [0] * num
@@ -120,7 +131,22 @@ class Interpreter_bytecode:
                 v[i] = self.varname[v[i].index]
             elif type(v[i]) is Const:
                 v[i] = self.consts[v[i].index]
+            elif type(v[i]) is FuncI:
+                v[i] = self.func_scope[v[i].index]
         return v if len(v) > 1 else v[0]
+
+    def start_func(self, func):
+        self.old_message.append([self.bytecodes, self.varname, self.consts, self.func_scope, self.env, self.stack_data])
+        message = func.message
+        self.bytecodes = message.bytecodes
+        self.varname = message.varname
+        self.consts = message.consts
+        self.func_scope = message.func_scope
+        self.env = func.env
+        self.stack_data = []
+
+    def end_func(self):
+        self.bytecodes, self.varname, self.consts, self.func_scope, self.env, self.stack_data = self.old_message.pop()
 
     def do(self):
         """
@@ -137,6 +163,8 @@ class Interpreter_bytecode:
                 self.stack_data.append(Var(cur[1]))
             elif op is code.push_const_index:
                 self.stack_data.append(Const(cur[1]))
+            elif op is code.push_func_index:
+                self.stack_data.append(FuncI(cur[1]))
             elif op is code.pop:
                 self.stack_data.pop()
             elif op is code.write:
@@ -174,15 +202,36 @@ class Interpreter_bytecode:
             elif op is code.jump:
                 self.pc = cur[1]
             elif op is code.call_register:
-                scope, var_list, name = self.get_target_object(3)
-                hash_map = {}
-                for k, v in scope['hash_map'].items():
-                    hash_map[v] = k
-                scope['hash_map'] = hash_map
-                self.env[name] = Func(name, var_list, scope, parent=self.env)
+                arr = self.get_target_object(cur[1])
+                name = arr[-1]
+                message = arr[0]
+                var_list = arr[1:-1]
+                var_list.reverse()
+                self.env[name] = Func(name, var_list, message, parent=self.env)
             elif op is code.call:
-                var_list, func = self.get_target_object(2)
+                arr = self.get_target_object(cur[1])
+                if type(arr) is list:
+                    func: Func = arr[-1]
+                    var_list = arr[:-1]
+                else:
+                    func: Func = arr
+                    var_list = []
+                var_list.reverse()
                 self.stack_frame.append((self.pc, func))
+                # func.env = [0] * (len(func.message.varname))
+                # for index, name in enumerate(func.var_list):
+                #     func.env[func.message.varname[get_origin_object(name)]] = var_list[get_origin_object(index)]
+                for index, name in enumerate(func.var_list):
+                    func.env[name] = var_list[get_origin_object(index)]
+                self.start_func(func)
+                self.pc = 0
+                self.size = len(self.bytecodes)
+            elif op is code.ret:
+                res = self.stack_data[-1]
+                self.end_func()
+                self.stack_data.append(res)
+                self.pc = self.stack_frame.pop()[0]
+                self.size = len(self.bytecodes)
             elif op <= calc.bitwise_right_step:
                 right, left = self.get_target_object(2)
                 self.stack_data.append(
