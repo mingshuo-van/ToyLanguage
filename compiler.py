@@ -55,6 +55,7 @@ class code(IntEnum):
     call_register = auto()
     call = auto()
     ret = auto()
+    get_origin = auto()
 
     def __repr__(self):
         return f'{self.name.upper()}'
@@ -325,6 +326,7 @@ class Compiler:
         :return: None
         """
         self.compile(node.val)
+        self.bytecodes.append((code.get_origin,))
         self.bytecodes.append((code.ret,))
 
     def call_define(self, node):
