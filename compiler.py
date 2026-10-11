@@ -397,6 +397,8 @@ class Compiler:
             self.add_code_label(code.jump_if_false, false_label)
             self.compile(right)
             self.add_code_label(code.jump_if_false, false_label)
+            # 在执行部分会被自动包装成 InnerBool 故这里直接压入 原生 bool 类型
+            # 下同
             self.bytecodes.append((code.push, True))
             self.add_code_label(code.jump, end)
             self.record_label_location(false_label)
