@@ -94,17 +94,6 @@ class calc(IntEnum):
         return f'{self.name.upper()}'
 
 
-def is_hashable(node):
-    """
-    判断对象是否可哈希
-    :param node: 要判断的对象
-    :return: 可以 True 不可以 False
-    """
-    try:
-        hash(node)
-        return True
-    except TypeError:
-        return False
 
 
 class Compiler:
