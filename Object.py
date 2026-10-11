@@ -485,7 +485,10 @@ class FuncMessage:
         return True
 
     def __hash__(self):
-        return hash((str(self.bytecodes), str(self.varname), str(self.consts), str(self.func_scope), str(self.cells)))
+        return hash((
+            tuple(x for x in self.bytecodes), str(self.varname), str(self.consts), str(self.func_scope),
+            str(self.cells)))
 
     def __repr__(self):
-        return str((str(self.bytecodes), str(self.varname), str(self.consts), str(self.func_scope), str(self.cells)))
+        return str((tuple(x for x in self.bytecodes), str(self.varname), str(self.consts), str(self.func_scope),
+                    str(self.cells)))
