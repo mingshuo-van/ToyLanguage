@@ -48,6 +48,7 @@ class code(IntEnum):
     read = auto()
     write_index = auto()
     read_index = auto()
+    read_slice = auto()
     jump_if_false = auto()
     jump_if_true = auto()
     jump = auto()
@@ -294,9 +295,14 @@ class Compiler:
             # right 是 list 封装的
             right = node.right
             self.compile(left)
-            # 暂不考虑切片
-            self.compile(right[0])
-            self.bytecodes.append((code.read_index,))
+            # 支持切片，但只支持形如 [a:b]的形式，a b 不可留空
+            if len(right) == 1:
+                self.compile(right[0])
+                self.bytecodes.append((code.read_index,))
+            else:
+                self.compile(right[0])
+                self.compile(right[1])
+                self.bytecodes.append((code.read_slice,))
 
     def assign(self, node):
         """

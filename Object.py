@@ -431,6 +431,24 @@ class InnerBool(Inner):
         return bool(self.val)
 
 
+class InnerList(list):
+    """
+    内置 list 类型
+    """
+
+    def __str__(self):
+        return '[' + ', '.join(str(x) for x in self) + ']'
+
+
+class InnerDict(dict):
+    """
+    内置 dict 类型
+    """
+
+    def __str__(self):
+        return '{' + ', '.join(f'{str(k)}: {str(v)}' for k, v in self.items()) + '}'
+
+
 class Cell:
     """
     闭包修饰

@@ -200,21 +200,30 @@ class Interpreter_bytecode:
             elif op is code.read_index:
                 right, left = get_target_object(2)
                 self.stack_data.append(left[get_origin_object(right)])
+            elif op is code.read_slice:
+                right, left, arr = get_target_object(3)
+                want = InnerList()
+                for i in arr[get_origin_object(left):get_origin_object(right)]:
+                    want.append(i)
+                self.stack_data.append(want)
             elif op is code.get_list:
                 x = cur[1]
-                arr = get_target_object(x)
-                if type(arr) is list:
-                    arr.reverse()
-                else:
-                    arr = [arr]
-                self.stack_data.append(arr)
+                arr = self.stack_data[-x:]
+                del self.stack_data[-x:]
+                want = InnerList()
+                for i in arr:
+                    want.append(i)
+                self.stack_data.append(want)
             elif op is code.get_dict:
                 x = cur[1]
                 arr = {}
                 for i in range(x):
                     right, left = get_target_object(2)
                     arr[get_origin_object(left)] = right
-                self.stack_data.append(dict(reversed(list(arr.items()))))
+                want = InnerDict()
+                for k, v in dict(reversed(list(arr.items()))).items():
+                    want[k] = v
+                self.stack_data.append(want)
             elif op is code.jump_if_false:
                 if not get_target_object(1):
                     pc = cur[1]
