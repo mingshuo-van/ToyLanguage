@@ -108,6 +108,7 @@ class Interpreter_bytecode:
         self.stack_data = []
         self.stack_frame = []
         self.env = {}
+        self.scope = [self.env, None]  # 本层变量作用域引用, 父全作用域引用
         self.pc = 0
         self.size = len(bytecodes)
         self.op_calc = [
@@ -158,17 +159,19 @@ class Interpreter_bytecode:
         return v if len(v) > 1 else v[0]
 
     def start_func(self, func):
-        self.old_message.append([self.bytecodes, self.varname, self.consts, self.func_scope, self.env, self.stack_data])
+        self.old_message.append(
+            [self.bytecodes, self.varname, self.consts, self.func_scope, self.env, self.stack_data, self.scope])
         message = func.message
         self.bytecodes = message.bytecodes
         self.varname = message.varname
         self.consts = message.consts
         self.func_scope = message.func_scope
+        self.scope = [func.env, self.scope]
         self.env = func.env
         self.stack_data = []
 
     def end_func(self):
-        self.bytecodes, self.varname, self.consts, self.func_scope, self.env, self.stack_data = self.old_message.pop()
+        self.bytecodes, self.varname, self.consts, self.func_scope, self.env, self.stack_data, self.scope = self.old_message.pop()
 
     def do(self):
         """
@@ -195,21 +198,20 @@ class Interpreter_bytecode:
                 self.stack_data.append(right)
             elif op is code.read:
                 head = self.get_target_object(1)
-                if head in self.env:
-                    self.stack_data.append(self.env[head])
-                else:
-                    get = False
-                    if self.old_message:
-                        for arr in reversed(self.old_message):
-                            if head in arr[4]:
-                                self.stack_data.append(arr[4][head])
-                                get = True
-                                break
-                    if not get and head in self.builtins_func:
-                        self.stack_data.append(self.builtins_func[head])
+                get = False
+                scope = self.scope
+                while scope is not None:
+                    if head in scope[0]:
+                        self.stack_data.append(scope[0][head])
                         get = True
-                    if not get:
-                        raise Lang_Err('NameError', f'{head} is not a name')
+                        break
+                    else:
+                        scope = scope[1]
+                if not get and head in self.builtins_func:
+                    self.stack_data.append(self.builtins_func[head])
+                    get = True
+                if not get:
+                    raise Lang_Err('NameError', f'{head} is not a name')
             elif op is code.write_index:
                 value, index, arr = self.get_target_object(3)
                 arr[index] = value
@@ -220,7 +222,10 @@ class Interpreter_bytecode:
             elif op is code.get_list:
                 size = cur[1]
                 arr = self.get_target_object(size)
-                arr.reverse()
+                if type(arr) is list:
+                    arr.reverse()
+                else:
+                    arr = [arr]
                 self.stack_data.append(arr)
             elif op is code.get_dict:
                 size = cur[1]
@@ -243,7 +248,7 @@ class Interpreter_bytecode:
                 message = arr[0]
                 var_list = arr[1:-1]
                 var_list.reverse()
-                self.env[name] = Func(name, var_list, message, parent=self.env)
+                self.env[name] = Func(name, var_list, message, parent=self.scope)
             elif op is code.call:
                 arr = self.get_target_object(cur[1])
                 if type(arr) is list:
@@ -252,6 +257,7 @@ class Interpreter_bytecode:
                 else:
                     func: Func = arr
                     var_list = []
+                func.env = {}
                 var_list.reverse()
                 if func.message.bytecodes is not inner_flag:
                     self.stack_frame.append((self.pc, func))
