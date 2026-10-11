@@ -40,8 +40,9 @@ auto = get_counter()
 class code(IntEnum):
     push = auto()
     push_var_index = auto()
-    push_const_index = auto()
-    push_func_index = auto()
+    read_var_index = auto()
+    read_const_index = auto()
+    read_func_index = auto()
     pop = auto()
     write = auto()
     read = auto()
@@ -55,7 +56,6 @@ class code(IntEnum):
     call_register = auto()
     call = auto()
     ret = auto()
-    get_origin = auto()
 
     def __repr__(self):
         return f'{self.name.upper()}'
@@ -157,7 +157,7 @@ class Compiler:
         else:
             f = InnerBool
         node = f(node)
-        self.bytecodes.append((code.push_const_index, self.get_consts_flag(node)))
+        self.bytecodes.append((code.read_const_index, self.get_consts_flag(node)))
 
     def get_varname_flag(self, node):
         """
@@ -288,13 +288,13 @@ class Compiler:
         t = type(node)
         if t is Id:
             flag = self.get_varname_flag(node.id)
-            self.bytecodes.append((code.push_var_index, flag))
-            self.bytecodes.append((code.read,))
+            self.bytecodes.append((code.read_var_index, flag))
         else:
             left = node.left
             # right 是 list 封装的
             right = node.right
             self.compile(left)
+            # 暂不考虑切片
             self.compile(right[0])
             self.bytecodes.append((code.read_index,))
 
@@ -326,7 +326,6 @@ class Compiler:
         :return: None
         """
         self.compile(node.val)
-        self.bytecodes.append((code.get_origin,))
         self.bytecodes.append((code.ret,))
 
     def call_define(self, node):
@@ -357,13 +356,13 @@ class Compiler:
         for i in var_list:
             self.bytecodes.append((code.push_var_index, self.get_varname_flag(i.id)))
 
-        self.bytecodes.append((code.push_func_index, self.get_func_scope_flag(message)))
+        self.bytecodes.append((code.read_func_index, self.get_func_scope_flag(message)))
 
         self.bytecodes.append((code.call_register, len(var_list) + 2))
 
     def call(self, node):
         name, var_list = node.name, node.vars
-        self.bytecodes.append((code.push_var_index, self.get_varname_flag(name.id)))
+        self.bytecodes.append((code.read_var_index, self.get_varname_flag(name.id)))
         self.bytecodes.append((code.read,))
         for i in var_list:
             self.compile(i)

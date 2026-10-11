@@ -3,42 +3,6 @@ from math import gamma, factorial
 from Object import *
 
 
-class Var:
-    """
-    包装在 varname 中存在
-    """
-
-    def __init__(self, index):
-        self.index = index
-
-    def __repr__(self):
-        return f'Var({self.index})'
-
-
-class Const:
-    """
-    包装在 consts 中存在
-    """
-
-    def __init__(self, index):
-        self.index = index
-
-    def __repr__(self):
-        return f'Const({self.index})'
-
-
-class FuncI:
-    """
-    包装在 func_scope 中存在
-    """
-
-    def __init__(self, index):
-        self.index = index
-
-    def __repr__(self):
-        return f'FuncI({self.index})'
-
-
 def fac(n):
     """
     计算阶乘的函数
@@ -139,23 +103,17 @@ class Interpreter_bytecode:
         self.old_message = []
         self.builtins_func = {
             'print': Func('print', ['line', 'end'],
-                          FuncMessage(inner_flag, {0: 'line', 1: 'end'}, {}, {}, []), self.env)
+                          FuncMessage(inner_flag, {0: 'line', 1: 'end'}, {}, {}, []), self.env),
+            'time': Func('time', [],
+                         FuncMessage(inner_flag, {0: 'line', 1: 'end'}, {}, {}, []), self.env)
         }
         self.builtins_map = {
-            'print': inner_print
+            'print': inner_print,
+            'time': inner_time
         }
 
     def get_target_object(self, num):
-        v = [0] * num
-        for i in range(num):
-            v[i] = self.stack_data.pop()
-            if type(v[i]) is Var:
-                v[i] = self.varname[v[i].index]
-            elif type(v[i]) is Const:
-                v[i] = self.consts[v[i].index]
-            elif type(v[i]) is FuncI:
-                v[i] = self.func_scope[v[i].index]
-            v[i] = get_origin_object(v[i])
+        v = [self.stack_data.pop() for _ in range(num)]
         return v if len(v) > 1 else v[0]
 
     def start_func(self, func):
@@ -182,22 +140,24 @@ class Interpreter_bytecode:
             cur = self.bytecodes[self.pc]
             self.pc += 1
             op = cur[0]
-            if op is code.push:
+            if isinstance(op, calc):
+                if op <= calc.bitwise_right_step:
+                    right, left = self.get_target_object(2)
+                    right = get_origin_object(right)
+                    left = get_origin_object(left)
+                    self.stack_data.append(
+                        get_inner_object(self.op_calc[op](left, right)))
+                elif op <= calc.neg:
+                    val = self.get_target_object(1)
+                    val = get_origin_object(val)
+                    self.stack_data.append(get_inner_object(self.op_calc[op](val)))
+            elif op is code.push:
                 self.stack_data.append(cur[1])
             elif op is code.push_var_index:
-                self.stack_data.append(Var(cur[1]))
-            elif op is code.push_const_index:
-                self.stack_data.append(Const(cur[1]))
-            elif op is code.push_func_index:
-                self.stack_data.append(FuncI(cur[1]))
-            elif op is code.pop:
-                self.stack_data.pop()
-            elif op is code.write:
-                right, left = self.get_target_object(2)
-                self.env[left] = right
-                self.stack_data.append(right)
-            elif op is code.read:
-                head = self.get_target_object(1)
+                self.stack_data.append(self.varname[cur[1]])
+            elif op is code.read_var_index:
+                index = cur[1]
+                head = self.varname[index]
                 get = False
                 scope = self.scope
                 while scope is not None:
@@ -212,13 +172,27 @@ class Interpreter_bytecode:
                     get = True
                 if not get:
                     raise Lang_Err('NameError', f'{head} is not a name')
+            elif op is code.read_const_index:
+                index = cur[1]
+                head = self.consts[index]
+                self.stack_data.append(head)
+            elif op is code.read_func_index:
+                index = cur[1]
+                head = self.func_scope[index]
+                self.stack_data.append(head)
+            elif op is code.pop:
+                self.stack_data.pop()
+            elif op is code.write:
+                right, left = self.get_target_object(2)
+                self.env[get_origin_object(left)] = right
+                self.stack_data.append(right)
             elif op is code.write_index:
                 value, index, arr = self.get_target_object(3)
-                arr[index] = value
+                arr[get_origin_object(index)] = value
                 self.stack_data.append(value)
             elif op is code.read_index:
                 right, left = self.get_target_object(2)
-                self.stack_data.append(left[right])
+                self.stack_data.append(left[get_origin_object(right)])
             elif op is code.get_list:
                 size = cur[1]
                 arr = self.get_target_object(size)
@@ -232,7 +206,7 @@ class Interpreter_bytecode:
                 arr = {}
                 for i in range(size):
                     right, left = self.get_target_object(2)
-                    arr[left] = right
+                    arr[get_origin_object(left)] = right
                 self.stack_data.append(dict(reversed(list(arr.items()))))
             elif op is code.jump_if_false:
                 if not self.get_target_object(1):
@@ -244,7 +218,7 @@ class Interpreter_bytecode:
                 self.pc = cur[1]
             elif op is code.call_register:
                 arr = self.get_target_object(cur[1])
-                name = arr[-1]
+                name = get_origin_object(arr[-1])
                 message = arr[0]
                 var_list = arr[1:-1]
                 var_list.reverse()
@@ -262,7 +236,7 @@ class Interpreter_bytecode:
                 if func.message.bytecodes is not inner_flag:
                     self.stack_frame.append((self.pc, func))
                     for index, name in enumerate(func.var_list):
-                        func.env[name] = var_list[index]
+                        func.env[get_origin_object(name)] = var_list[index]
                     self.start_func(func)
                     self.pc = 0
                     self.size = len(self.bytecodes)
@@ -270,20 +244,10 @@ class Interpreter_bytecode:
                     res = self.builtins_map[func.name](*var_list)
                     self.stack_data.append(get_inner_object(res))
             elif op is code.ret:
-                res = self.stack_data[-1]
+                # 离开环境前解开类似InnerInt之类的修饰
+                res = self.get_target_object(1)
                 self.end_func()
                 # 进入新环境可以尝试包装成内置类型一次
                 self.stack_data.append(get_inner_object(res))
                 self.pc = self.stack_frame.pop()[0]
                 self.size = len(self.bytecodes)
-            elif op is code.get_origin:
-                # 因为如果某些量被包装成 const_index 或者 var_index
-                # 离开当前环境后索引就无效了
-                self.stack_data.append(self.get_target_object(1))
-            elif op <= calc.bitwise_right_step:
-                right, left = self.get_target_object(2)
-                self.stack_data.append(
-                    get_inner_object(self.op_calc[op](left, right)))
-            elif op <= calc.neg:
-                val = self.get_target_object(1)
-                self.stack_data.append(get_inner_object(self.op_calc[op](val)))

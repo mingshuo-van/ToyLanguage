@@ -444,6 +444,7 @@ class FuncMessage:
     """
     Func 信息
     """
+    __slots__ = ('bytecodes', 'varname', 'consts', 'func_scope', 'cells')
 
     def __init__(self, bytecodes, varname, consts, func_scope, cells):
         self.bytecodes = bytecodes
