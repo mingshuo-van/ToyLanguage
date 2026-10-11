@@ -20,6 +20,7 @@ def fac(n):
 
 
 class Func:
+    __slots__ = ('name', 'var_list', 'message', 'parent', 'env')
 
     def __init__(self, name, var_list, message, parent=None):
         self.name = name
@@ -64,6 +65,9 @@ from InnerFunc import *
 
 
 class Interpreter_bytecode:
+    __slots__ = ('bytecodes', 'varname', 'consts', 'func_scope', 'stack_data', 'stack_frame', 'env', 'scope', 'op_calc'
+                 , 'old_message', 'builtins_func', 'builtins_map')
+
     def __init__(self, bytecodes, varname, consts, func_scope):
         self.bytecodes = bytecodes
         self.varname = {v: k for k, v in varname.items()}
@@ -73,8 +77,6 @@ class Interpreter_bytecode:
         self.stack_frame = []
         self.env = {}
         self.scope = [self.env, None]  # 本层变量作用域引用, 父全作用域引用
-        self.pc = 0
-        self.size = len(bytecodes)
         self.op_calc = [
             lambda x, y: x | y if type(y) is dict and type(x) is dict else (
                 str(x) + str(y) if type(x) is str or type(y) is str else x + y),
@@ -136,21 +138,26 @@ class Interpreter_bytecode:
         执行字节码
         :return: None
         """
-        while self.pc < self.size:
-            cur = self.bytecodes[self.pc]
-            self.pc += 1
+        pc = 0
+        bytecodes = self.bytecodes
+        size = len(bytecodes)
+        get_target_object = self.get_target_object
+        op_calc = self.op_calc
+        while pc < size:
+            cur = bytecodes[pc]
+            pc += 1
             op = cur[0]
             if isinstance(op, calc):
                 if op <= calc.bitwise_right_step:
-                    right, left = self.get_target_object(2)
+                    right, left = get_target_object(2)
                     right = get_origin_object(right)
                     left = get_origin_object(left)
                     self.stack_data.append(
-                        get_inner_object(self.op_calc[op](left, right)))
+                        get_inner_object(op_calc[op](left, right)))
                 elif op <= calc.neg:
-                    val = self.get_target_object(1)
+                    val = get_target_object(1)
                     val = get_origin_object(val)
-                    self.stack_data.append(get_inner_object(self.op_calc[op](val)))
+                    self.stack_data.append(get_inner_object(op_calc[op](val)))
             elif op is code.push:
                 self.stack_data.append(cur[1])
             elif op is code.push_var_index:
@@ -183,48 +190,48 @@ class Interpreter_bytecode:
             elif op is code.pop:
                 self.stack_data.pop()
             elif op is code.write:
-                right, left = self.get_target_object(2)
+                right, left = get_target_object(2)
                 self.env[get_origin_object(left)] = right
                 self.stack_data.append(right)
             elif op is code.write_index:
-                value, index, arr = self.get_target_object(3)
+                value, index, arr = get_target_object(3)
                 arr[get_origin_object(index)] = value
                 self.stack_data.append(value)
             elif op is code.read_index:
-                right, left = self.get_target_object(2)
+                right, left = get_target_object(2)
                 self.stack_data.append(left[get_origin_object(right)])
             elif op is code.get_list:
-                size = cur[1]
-                arr = self.get_target_object(size)
+                x = cur[1]
+                arr = get_target_object(x)
                 if type(arr) is list:
                     arr.reverse()
                 else:
                     arr = [arr]
                 self.stack_data.append(arr)
             elif op is code.get_dict:
-                size = cur[1]
+                x = cur[1]
                 arr = {}
-                for i in range(size):
-                    right, left = self.get_target_object(2)
+                for i in range(x):
+                    right, left = get_target_object(2)
                     arr[get_origin_object(left)] = right
                 self.stack_data.append(dict(reversed(list(arr.items()))))
             elif op is code.jump_if_false:
-                if not self.get_target_object(1):
-                    self.pc = cur[1]
+                if not get_target_object(1):
+                    pc = cur[1]
             elif op is code.jump_if_true:
-                if self.get_target_object(1):
-                    self.pc = cur[1]
+                if get_target_object(1):
+                    pc = cur[1]
             elif op is code.jump:
-                self.pc = cur[1]
+                pc = cur[1]
             elif op is code.call_register:
-                arr = self.get_target_object(cur[1])
+                arr = get_target_object(cur[1])
                 name = get_origin_object(arr[-1])
                 message = arr[0]
                 var_list = arr[1:-1]
                 var_list.reverse()
                 self.env[name] = Func(name, var_list, message, parent=self.scope)
             elif op is code.call:
-                arr = self.get_target_object(cur[1])
+                arr = get_target_object(cur[1])
                 if type(arr) is list:
                     func: Func = arr[-1]
                     var_list = arr[:-1]
@@ -234,20 +241,21 @@ class Interpreter_bytecode:
                 func.env = {}
                 var_list.reverse()
                 if func.message.bytecodes is not inner_flag:
-                    self.stack_frame.append((self.pc, func))
+                    self.stack_frame.append((pc, func))
                     for index, name in enumerate(func.var_list):
                         func.env[get_origin_object(name)] = var_list[index]
                     self.start_func(func)
-                    self.pc = 0
-                    self.size = len(self.bytecodes)
+                    pc = 0
+                    bytecodes = self.bytecodes
+                    size = len(bytecodes)
                 else:
                     res = self.builtins_map[func.name](*var_list)
                     self.stack_data.append(get_inner_object(res))
             elif op is code.ret:
-                # 离开环境前解开类似InnerInt之类的修饰
-                res = self.get_target_object(1)
+                res = get_target_object(1)
                 self.end_func()
                 # 进入新环境可以尝试包装成内置类型一次
                 self.stack_data.append(get_inner_object(res))
-                self.pc = self.stack_frame.pop()[0]
-                self.size = len(self.bytecodes)
+                pc = self.stack_frame.pop()[0]
+                bytecodes = self.bytecodes
+                size = len(bytecodes)
