@@ -347,7 +347,7 @@ class Compiler:
             self.get_varname_flag(i.id)
         for i in body:
             self.compile(i)
-        if self.bytecodes[-1][0] is not code.ret:
+        if len(self.bytecodes) < 1 or self.bytecodes[-1][0] is not code.ret:
             self.bytecodes.append((code.push, None))
             self.bytecodes.append((code.ret,))
         self.real_write_label_location()
@@ -369,7 +369,6 @@ class Compiler:
     def call(self, node):
         name, var_list = node.name, node.vars
         self.bytecodes.append((code.read_var_index, self.get_varname_flag(name.id)))
-        self.bytecodes.append((code.read,))
         for i in var_list:
             self.compile(i)
         self.bytecodes.append((code.call, len(var_list) + 1))
