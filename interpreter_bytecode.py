@@ -126,7 +126,7 @@ class Interpreter_bytecode:
         self.varname = message.varname
         self.consts = message.consts
         self.func_scope = message.func_scope
-        self.scope = [func.env, self.scope]
+        self.scope = [func.env, func.parent]
         self.env = func.env
         self.stack_data = []
 
