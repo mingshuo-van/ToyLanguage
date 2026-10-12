@@ -58,6 +58,17 @@ def get_origin_object(node):
         return node.val
     return node
 
+def get_element(node):
+    """
+    辅助拆箱 cell
+    在 read 或 具备 read 语义的情况下用于获得内置元素
+    但不会直接用于 write 的 左值
+    取决于具体的功能
+    :param node: 要处理的元素
+    :return: node | Cell.val
+    """
+    return node.val if type(node) is Cell else node
+
 
 inner_flag = object()
 need_to_be_cell = object()

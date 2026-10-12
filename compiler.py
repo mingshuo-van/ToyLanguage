@@ -159,7 +159,7 @@ class Compiler:
         """
         if node not in self.varname:
             self.varname[node] = self.varname_counter()
-            if self.only_read and len(self.old_compile_env) > 1:
+            if (self.only_read or self.cell_read) and len(self.old_compile_env) > 1:
                 get = False
                 level = -1
                 for i in reversed(self.old_compile_env):
