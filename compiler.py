@@ -385,10 +385,13 @@ class Compiler:
 
     def call(self, node):
         name, var_list = node.name, node.vars
-        # 这里需要考虑闭包捕获问题
-        self.only_read = True
-        self.bytecodes.append((code.read_var_index, self.get_varname_flag(name.id)))
-        self.only_read = False
+        if type(name) is not Id:
+            self.compile(name)
+        else:
+            # 这里需要考虑闭包捕获问题
+            self.only_read = True
+            self.bytecodes.append((code.read_var_index, self.get_varname_flag(name.id)))
+            self.only_read = False
         for i in var_list:
             self.compile(i)
         self.bytecodes.append((code.call, len(var_list) + 1))
