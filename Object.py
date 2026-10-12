@@ -335,6 +335,7 @@ class InnerInt(Inner):
     """
     内置 int 包装
     """
+    __slots__ = ('val',)
 
     def __init__(self, val):
         super().__init__()
@@ -360,6 +361,7 @@ class InnerFloat(Inner):
     """
     内置 float 包装
     """
+    __slots__ = ('val',)
 
     def __init__(self, val):
         super().__init__()
@@ -385,6 +387,7 @@ class InnerStr(Inner):
     """
     内置 str 包装
     """
+    __slots__ = ('val',)
 
     def __init__(self, val):
         super().__init__()
@@ -410,6 +413,7 @@ class InnerBool(Inner):
     """
     内置 bool 包装
     """
+    __slots__ = ('val',)
 
     def __init__(self, val):
         super().__init__()
@@ -462,14 +466,15 @@ class FuncMessage:
     """
     Func 信息
     """
-    __slots__ = ('bytecodes', 'varname', 'consts', 'func_scope', 'cells')
+    __slots__ = ('bytecodes', 'varname', 'consts', 'func_scope', 'cells','need_to_get')
 
-    def __init__(self, bytecodes, varname, consts, func_scope, cells):
+    def __init__(self, bytecodes, varname, consts, func_scope):
         self.bytecodes = bytecodes
         self.varname = varname
         self.consts = consts
         self.func_scope = func_scope
-        self.cells = cells
+        self.cells = None
+        self.need_to_get = None
 
     def __eq__(self, other):
         if type(other) is not FuncMessage:

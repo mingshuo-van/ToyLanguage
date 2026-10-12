@@ -60,6 +60,7 @@ def get_origin_object(node):
 
 
 inner_flag = object()
+need_to_be_cell = object()
 
 from InnerFunc import *
 
@@ -105,9 +106,9 @@ class Interpreter_bytecode:
         self.old_message = []
         self.builtins_func = {
             'print': Func('print', ['line', 'end'],
-                          FuncMessage(inner_flag, {0: 'line', 1: 'end'}, {}, {}, []), self.env),
+                          FuncMessage(inner_flag, {0: 'line', 1: 'end'}, {}, {}), self.env),
             'time': Func('time', [],
-                         FuncMessage(inner_flag, {0: 'line', 1: 'end'}, {}, {}, []), self.env)
+                         FuncMessage(inner_flag, {0: 'line', 1: 'end'}, {}, {}), self.env)
         }
         self.builtins_map = {
             'print': inner_print,
@@ -253,6 +254,15 @@ class Interpreter_bytecode:
                     self.stack_frame.append((pc, func))
                     for index, name in enumerate(func.var_list):
                         func.env[get_origin_object(name)] = var_list[index]
+                    for index in func.message.cells:
+                        # 这是要用 Cell 包装的本函数内部变量
+                        func.env[get_origin_object(self.varname[index])] = Cell(None)
+                    for level, index in func.message.need_to_get:
+                        # 这是本层要沿 parent 链追溯并记录的内容
+                        parent = func.parent
+                        for _ in range(level):
+                            parent = parent[1]
+                        func.parent[0][self.varname[index]] = parent[0][self.varname[index]]
                     self.start_func(func)
                     pc = 0
                     bytecodes = self.bytecodes

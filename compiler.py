@@ -94,8 +94,6 @@ class calc(IntEnum):
         return f'{self.name.upper()}'
 
 
-
-
 class Compiler:
 
     def __init__(self, ast):
@@ -130,6 +128,10 @@ class Compiler:
         self.func_counter = get_counter()
         self.varname_counter = get_counter()
         self.consts_counter = get_counter()
+        # 这是用来处理只读闭包引用的，处理这一情况时不需要额外处理，只要在本地写入当时的静态状态即可
+        self.only_read = False
+        # 这时用来处理修改外层变量的闭包引用的，处理时需要用 Cell 包装，并做隐式的拆箱装箱
+        self.cell_read = False
 
     def inner(self, node):
         """
@@ -157,6 +159,25 @@ class Compiler:
         """
         if node not in self.varname:
             self.varname[node] = self.varname_counter()
+            if self.only_read and len(self.old_compile_env) > 1:
+                get = False
+                level = 0
+                for i in reversed(self.old_compile_env):
+                    level += 1
+                    if node in i[3]:
+                        if self.cell_read:
+                            # 这是记录在变量被捕获的作用域，用来说明变量需要被 Cell 包装
+                            # 用同层的索引直接对应
+                            i[-2].append(i[3][node])
+                        get = True
+                        # 这是在当前作用域记录需要捕获它，存储在上一个被暂存的函数的need_to_get，但是提供给当前使用的记录
+                        # 同时记录目标追溯次数和在目标层的索引
+                        # 方便未来做 list 优化代替现有 dict 记录变量的方案
+                        i[-1].append((level, i[3][node]))
+                        break
+                if not get:
+                    raise Lang_Err('NameError', f'{node} is not a variable')
+
         return self.varname[node]
 
     def get_consts_flag(self, node):
@@ -184,7 +205,7 @@ class Compiler:
         self.old_compile_env.append(
             [self.bytecodes, self.back_label, self.back_map, self.varname, self.consts, self.func_scope,
              self.loop_bounds,
-             self.func_counter, self.varname_counter, self.consts_counter, []])
+             self.func_counter, self.varname_counter, self.consts_counter, [], []])
         self.bytecodes = []
         self.back_label = []
         self.back_map = {}
@@ -199,9 +220,9 @@ class Compiler:
     def recovery_old_compile_env(self):
         self.bytecodes, self.back_label, self.back_map, self.varname, self.consts, self.func_scope, \
             self.loop_bounds, \
-            self.func_counter, self.varname_counter, self.consts_counter, cells = self.old_compile_env.pop()
+            self.func_counter, self.varname_counter, self.consts_counter, cells, need_to_get = self.old_compile_env.pop()
 
-        return cells
+        return cells, need_to_get
 
     def real_write_label_location(self):
         """
@@ -271,13 +292,16 @@ class Compiler:
 
     def read(self, node):
         """
-        生成读变量的字节码，需要考虑在函数内部时寻找到闭包捕获的变量，然后记录在cells（当前该功能未实现）
+        生成读变量的字节码，需要考虑在函数内部时寻找到闭包捕获的变量，然后记录在cells（当前该功能未实现，先实现闭包可读，再处理 nonlocal 修改）
         :param node: Id | IndexError
         :return: None
         """
         t = type(node)
         if t is Id:
+            # 这里要考虑闭包捕获问题
+            self.only_read = True
             flag = self.get_varname_flag(node.id)
+            self.only_read = False
             self.bytecodes.append((code.read_var_index, flag))
         else:
             left = node.left
@@ -300,19 +324,22 @@ class Compiler:
         :return: None
         """
         op, left, right = node.op, node.left, node.right
-        if op == '=':
-            t = type(left)
-            if t is Id:
-                flag = self.get_varname_flag(left.id)
-                self.bytecodes.append((code.push_var_index, flag))
-                self.compile(right)
-                self.bytecodes.append((code.write,))
-            else:
-                self.compile(left.left)
-                # left 是 Index_expr，left.right 是 list 封装的
-                self.compile(left.right[0])
-                self.compile(right)
-                self.bytecodes.append((code.write_index,))
+        if op == ':=':
+            self.cell_read = True
+        t = type(left)
+        if t is Id:
+            flag = self.get_varname_flag(left.id)
+            self.bytecodes.append((code.push_var_index, flag))
+            self.compile(right)
+            self.bytecodes.append((code.write,))
+        else:
+            self.compile(left.left)
+            # left 是 Index_expr，left.right 是 list 封装的
+            self.compile(left.right[0])
+            self.compile(right)
+            self.bytecodes.append((code.write_index,))
+        if self.cell_read:
+            self.cell_read = False
 
     def ret_node(self, node):
         """
@@ -344,9 +371,10 @@ class Compiler:
                               {k: v for v, k in self.varname.items()},
                               {k: v for v, k in self.consts.items()},
                               {k: v for v, k in self.func_scope.items()},
-                              None)
-        cells = self.recovery_old_compile_env()
+                              )
+        cells, need_to_get = self.recovery_old_compile_env()
         message.cells = cells
+        message.need_to_get = need_to_get
         self.bytecodes.append((code.push_var_index, self.get_varname_flag(name.id)))
         for i in var_list:
             self.bytecodes.append((code.push_var_index, self.get_varname_flag(i.id)))
@@ -357,7 +385,10 @@ class Compiler:
 
     def call(self, node):
         name, var_list = node.name, node.vars
+        # 这里需要考虑闭包捕获问题
+        self.only_read = True
         self.bytecodes.append((code.read_var_index, self.get_varname_flag(name.id)))
+        self.only_read = False
         for i in var_list:
             self.compile(i)
         self.bytecodes.append((code.call, len(var_list) + 1))
