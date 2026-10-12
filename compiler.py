@@ -171,9 +171,10 @@ class Compiler:
                             i[-2].append(i[3][node])
                         get = True
                         # 这是在当前作用域记录需要捕获它，存储在上一个被暂存的函数的need_to_get，但是提供给当前使用的记录
-                        # 同时记录目标追溯次数和在目标层的索引
+                        # 同时记录目标追溯次数和在目标层的索引（当前暂时存储为本层索引，方便当下开发）
                         # 方便未来做 list 优化代替现有 dict 记录变量的方案
-                        i[-1].append((level, i[3][node]))
+                        # 上一个被暂存的函数就是 self.old_compile_env[-1]
+                        self.old_compile_env[-1][-1].append((level, self.varname[node]))  # 未来使用 i[3][node]
                         break
                 if not get:
                     raise Lang_Err('NameError', f'{node} is not a variable')

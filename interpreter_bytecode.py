@@ -254,15 +254,16 @@ class Interpreter_bytecode:
                     self.stack_frame.append((pc, func))
                     for index, name in enumerate(func.var_list):
                         func.env[get_origin_object(name)] = var_list[index]
+                    varname = func.message.varname
                     for index in func.message.cells:
                         # 这是要用 Cell 包装的本函数内部变量
-                        func.env[get_origin_object(self.varname[index])] = Cell(None)
+                        func.env[get_origin_object(varname[index])] = Cell(None)
                     for level, index in func.message.need_to_get:
                         # 这是本层要沿 parent 链追溯并记录的内容
                         parent = func.parent
                         for _ in range(level):
                             parent = parent[1]
-                        func.parent[0][self.varname[index]] = parent[0][self.varname[index]]
+                        func.env[varname[index]] = parent[0][varname[index]]
                     self.start_func(func)
                     pc = 0
                     bytecodes = self.bytecodes
