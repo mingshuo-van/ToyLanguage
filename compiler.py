@@ -161,7 +161,7 @@ class Compiler:
             self.varname[node] = self.varname_counter()
             if self.only_read and len(self.old_compile_env) > 1:
                 get = False
-                level = 0
+                level = -1
                 for i in reversed(self.old_compile_env):
                     level += 1
                     if node in i[3]:
