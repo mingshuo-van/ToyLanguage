@@ -272,7 +272,8 @@ class Interpreter_bytecode:
                     varname = func.message.varname
                     for index in func.message.cells:
                         # 这是要用 Cell 包装的本函数内部变量
-                        func.env[get_origin_object(varname[index])] = Cell(None)
+                        temp = get_origin_object(varname[index])
+                        func.env[temp] = Cell(func.env[temp] if temp in func.env else None)
                     for level, index in func.message.need_to_get:
                         # 这是本层要沿 parent 链追溯并记录的内容
                         parent = func.parent
