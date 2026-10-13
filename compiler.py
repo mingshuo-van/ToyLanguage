@@ -137,6 +137,9 @@ class Compiler:
         # 只读闭包捕获，只在函数编译中使用
         self.need_to_get = []
 
+        self.get_varname_flag('print')
+        self.get_varname_flag('time')
+
     def inner(self, node):
         """
         处理 python 的内置元素包装
@@ -163,7 +166,7 @@ class Compiler:
         """
         if node not in self.varname:
             self.varname[node] = self.varname_counter()
-            if (self.only_read or self.cell_read) and len(self.old_compile_env) > 1:
+            if (self.only_read or self.cell_read) and self.old_compile_env:
                 get = False
                 level = -1
                 for i in reversed(self.old_compile_env):
@@ -175,9 +178,8 @@ class Compiler:
                             i[-2].append(i[3][node])
                         get = True
                         # 这是在当前作用域记录需要捕获它
-                        # 同时记录目标追溯次数和在目标层的索引（当前暂时存储为本层索引，方便当下开发）
-                        # 方便未来做 list 优化代替现有 dict 记录变量的方案
-                        self.need_to_get.append((level, self.varname[node]))  # 未来使用 i[3][node]
+                        # 同时记录目标追溯次数，本层索引，在目标层的索引
+                        self.need_to_get.append((level, self.varname[node], i[3][node]))
                         break
                 if not get:
                     raise Lang_Err('NameError', f'{node} is not a variable')
@@ -361,6 +363,11 @@ class Compiler:
         :return: None
         """
         name, var_list, body = node.name, node.vars, node.body
+        # 函数名作为变量名记录
+        self.bytecodes.append((code.push_var_index, self.get_varname_flag(name.id)))
+        for i in var_list:
+            # 形参名作为变量名记录
+            self.bytecodes.append((code.push_var_index, self.get_varname_flag(i.id)))
         self.set_new_compile_env()
         for i in var_list:
             # 保证形参一定被记录在varname中
@@ -379,9 +386,6 @@ class Compiler:
         message.cells = self.cells
         message.need_to_get = self.need_to_get
         self.recovery_old_compile_env()
-        self.bytecodes.append((code.push_var_index, self.get_varname_flag(name.id)))
-        for i in var_list:
-            self.bytecodes.append((code.push_var_index, self.get_varname_flag(i.id)))
 
         self.bytecodes.append((code.read_func_index, self.get_func_scope_flag(message)))
 

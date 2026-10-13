@@ -27,7 +27,7 @@ class Func:
         self.var_list = var_list
         self.message = message
         self.parent = parent
-        self.env = {}
+        self.env = None
 
     def __repr__(self):
         return f'(Func {self.name} {self.var_list})'
@@ -85,7 +85,7 @@ class Interpreter_bytecode:
         self.func_scope = {v: k for k, v in func_scope.items()}
         self.stack_data = []
         self.stack_frame = []
-        self.env = {}
+        self.env = [0] * len(varname)
         self.scope = [self.env, None]  # 本层变量作用域引用, 父全作用域引用
         self.op_calc = [
             lambda x, y: x | y if type(y) is dict and type(x) is dict else (
@@ -123,6 +123,10 @@ class Interpreter_bytecode:
             'print': inner_print,
             'time': inner_time
         }
+        builtins_index = 0
+        for func in self.builtins_func.values():
+            self.env[builtins_index] = func
+            builtins_index += 1
 
     def get_target_object(self, num):
         v = [self.stack_data.pop() for _ in range(num)]
@@ -171,25 +175,27 @@ class Interpreter_bytecode:
             elif op is code.push:
                 self.stack_data.append(cur[1])
             elif op is code.push_var_index:
-                self.stack_data.append(self.varname[cur[1]])
+                self.stack_data.append(cur[1])
             elif op is code.read_var_index:
                 index = cur[1]
-                head = self.varname[index]
-                get = False
-                scope = self.scope
-                while scope is not None:
-                    if head in scope[0]:
-                        # 是 Cell 拆箱，是 Inner 保留
-                        self.stack_data.append(scope[0][head].val if type(scope[0][head]) is Cell else scope[0][head])
-                        get = True
-                        break
-                    else:
-                        scope = scope[1]
-                if not get and head in self.builtins_func:
-                    self.stack_data.append(self.builtins_func[head])
-                    get = True
-                if not get:
-                    raise Lang_Err('NameError', f'{head} is not a name')
+                try:
+                    self.stack_data.append(self.env[index].val if type(self.env[index]) is Cell else self.env[index])
+                # head = self.varname[index]
+                # get = False
+                # scope = self.scope
+                # while scope is not None:
+                #     if head in scope[0]:
+                #         # 是 Cell 拆箱，是 Inner 保留
+                #         self.stack_data.append(scope[0][head].val if type(scope[0][head]) is Cell else scope[0][head])
+                #         get = True
+                #         break
+                #     else:
+                #         scope = scope[1]
+                # if not get and head in self.builtins_func:
+                #     self.stack_data.append(self.builtins_func[head])
+                #     get = True\\
+                except KeyError:
+                    raise Lang_Err('NameError', f'{self.varname[index]} is not a name')
             elif op is code.read_const_index:
                 index = cur[1]
                 head = self.consts[index]
@@ -203,7 +209,7 @@ class Interpreter_bytecode:
             elif op is code.write:
                 right, left = get_target_object(2)
                 left = get_origin_object(left)
-                if left in self.env and type(self.env[left]) is Cell:
+                if type(self.env[left]) is Cell:
                     self.env[left].val = right
                 else:
                     self.env[left] = right
@@ -250,11 +256,11 @@ class Interpreter_bytecode:
                 pc = cur[1]
             elif op is code.call_register:
                 arr = get_target_object(cur[1])
-                name = get_origin_object(arr[-1])
+                name_index = get_origin_object(arr[-1])
                 message = arr[0]
                 var_list = arr[1:-1]
                 var_list.reverse()
-                self.env[name] = Func(name, var_list, message, parent=self.scope)
+                self.env[name_index] = Func(self.varname[name_index], var_list, message, parent=self.scope)
             elif op is code.call:
                 arr = get_target_object(cur[1])
                 if type(arr) is list:
@@ -263,23 +269,21 @@ class Interpreter_bytecode:
                 else:
                     func: Func = arr
                     var_list = []
-                func.env = {}
-                var_list.reverse()
                 if func.message.bytecodes is not inner_flag:
+                    func.env = [0] * len(func.message.varname)
+                    var_list.reverse()
                     self.stack_frame.append((pc, func))
-                    for index, name in enumerate(func.var_list):
-                        func.env[get_origin_object(name)] = var_list[index]
-                    varname = func.message.varname
+                    for index, _ in enumerate(func.var_list):
+                        func.env[index] = var_list[index]
                     for index in func.message.cells:
                         # 这是要用 Cell 包装的本函数内部变量
-                        temp = get_origin_object(varname[index])
-                        func.env[temp] = Cell(func.env[temp] if temp in func.env else None)
-                    for level, index in func.message.need_to_get:
+                        func.env[index] = Cell(func.env[index] if index in func.env else None)
+                    for level, cur, that in func.message.need_to_get:
                         # 这是本层要沿 parent 链追溯并记录的内容
                         parent = func.parent
                         for _ in range(level):
                             parent = parent[1]
-                        func.env[varname[index]] = parent[0][varname[index]]
+                        func.env[cur] = parent[0][that]
                     self.start_func(func)
                     pc = 0
                     bytecodes = self.bytecodes
