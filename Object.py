@@ -327,8 +327,7 @@ class Lang_Err(Exception):
 
 
 class Inner:
-    def __init__(self):
-        self.val = None
+    __slots__ = ()
 
 
 class InnerInt(Inner):
@@ -338,7 +337,6 @@ class InnerInt(Inner):
     __slots__ = ('val',)
 
     def __init__(self, val):
-        super().__init__()
         self.val = int(val)
 
     def __repr__(self):
@@ -364,7 +362,6 @@ class InnerFloat(Inner):
     __slots__ = ('val',)
 
     def __init__(self, val):
-        super().__init__()
         self.val = float(val)
 
     def __repr__(self):
@@ -390,7 +387,6 @@ class InnerStr(Inner):
     __slots__ = ('val',)
 
     def __init__(self, val):
-        super().__init__()
         self.val = str(val)
 
     def __repr__(self):
@@ -416,7 +412,6 @@ class InnerBool(Inner):
     __slots__ = ('val',)
 
     def __init__(self, val):
-        super().__init__()
         self.val = bool(val)
 
     def __repr__(self):
@@ -466,7 +461,7 @@ class FuncMessage:
     """
     Func 信息
     """
-    __slots__ = ('bytecodes', 'varname', 'consts', 'func_scope', 'cells','need_to_get')
+    __slots__ = ('bytecodes', 'varname', 'consts', 'func_scope', 'cells', 'need_to_get')
 
     def __init__(self, bytecodes, varname, consts, func_scope):
         self.bytecodes = bytecodes
