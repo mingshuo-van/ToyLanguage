@@ -132,6 +132,10 @@ class Compiler:
         self.only_read = False
         # 这时用来处理修改外层变量的闭包引用的，处理时需要用 Cell 包装，并做隐式的拆箱装箱
         self.cell_read = False
+        # 可修改闭包捕获，只在函数编译中使用
+        self.cells = []
+        # 只读闭包捕获，只在函数编译中使用
+        self.need_to_get = []
 
     def inner(self, node):
         """
@@ -170,11 +174,10 @@ class Compiler:
                             # 用同层的索引直接对应
                             i[-2].append(i[3][node])
                         get = True
-                        # 这是在当前作用域记录需要捕获它，存储在上一个被暂存的函数的need_to_get，但是提供给当前使用的记录
+                        # 这是在当前作用域记录需要捕获它
                         # 同时记录目标追溯次数和在目标层的索引（当前暂时存储为本层索引，方便当下开发）
                         # 方便未来做 list 优化代替现有 dict 记录变量的方案
-                        # 上一个被暂存的函数就是 self.old_compile_env[-1]
-                        self.old_compile_env[-1][-1].append((level, self.varname[node]))  # 未来使用 i[3][node]
+                        self.need_to_get.append((level, self.varname[node]))  # 未来使用 i[3][node]
                         break
                 if not get:
                     raise Lang_Err('NameError', f'{node} is not a variable')
@@ -206,7 +209,7 @@ class Compiler:
         self.old_compile_env.append(
             [self.bytecodes, self.back_label, self.back_map, self.varname, self.consts, self.func_scope,
              self.loop_bounds,
-             self.func_counter, self.varname_counter, self.consts_counter, [], []])
+             self.func_counter, self.varname_counter, self.consts_counter, self.cells, self.need_to_get])
         self.bytecodes = []
         self.back_label = []
         self.back_map = {}
@@ -217,13 +220,13 @@ class Compiler:
         self.func_counter = get_counter()
         self.varname_counter = get_counter()
         self.consts_counter = get_counter()
+        self.cells = []
+        self.need_to_get = []
 
     def recovery_old_compile_env(self):
         self.bytecodes, self.back_label, self.back_map, self.varname, self.consts, self.func_scope, \
             self.loop_bounds, \
-            self.func_counter, self.varname_counter, self.consts_counter, cells, need_to_get = self.old_compile_env.pop()
-
-        return cells, need_to_get
+            self.func_counter, self.varname_counter, self.consts_counter, self.cells, self.need_to_get = self.old_compile_env.pop()
 
     def real_write_label_location(self):
         """
@@ -373,9 +376,9 @@ class Compiler:
                               {k: v for v, k in self.consts.items()},
                               {k: v for v, k in self.func_scope.items()},
                               )
-        cells, need_to_get = self.recovery_old_compile_env()
-        message.cells = cells
-        message.need_to_get = need_to_get
+        message.cells = self.cells
+        message.need_to_get = self.need_to_get
+        self.recovery_old_compile_env()
         self.bytecodes.append((code.push_var_index, self.get_varname_flag(name.id)))
         for i in var_list:
             self.bytecodes.append((code.push_var_index, self.get_varname_flag(i.id)))

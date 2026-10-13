@@ -54,20 +54,18 @@ def get_inner_object(node):
 
 
 def get_origin_object(node):
-    if isinstance(node, Inner):
-        return node.val
-    return node
-
-def get_element(node):
     """
-    辅助拆箱 cell
+    辅助拆箱 cell 和 inner
     在 read 或 具备 read 语义的情况下用于获得内置元素
     但不会直接用于 write 的 左值
     取决于具体的功能
     :param node: 要处理的元素
     :return: node | Cell.val
     """
-    return node.val if type(node) is Cell else node
+    node = node.val if type(node) is Cell else node
+    if isinstance(node, Inner):
+        return node.val
+    return node
 
 
 inner_flag = object()
@@ -181,7 +179,8 @@ class Interpreter_bytecode:
                 scope = self.scope
                 while scope is not None:
                     if head in scope[0]:
-                        self.stack_data.append(scope[0][head])
+                        # 是 Cell 拆箱，是 Inner 保留
+                        self.stack_data.append(scope[0][head].val if type(scope[0][head]) is Cell else scope[0][head])
                         get = True
                         break
                     else:
@@ -203,10 +202,15 @@ class Interpreter_bytecode:
                 self.stack_data.pop()
             elif op is code.write:
                 right, left = get_target_object(2)
-                self.env[get_origin_object(left)] = right
+                left = get_origin_object(left)
+                if left in self.env and type(self.env[left]) is Cell:
+                    self.env[left].val = right
+                else:
+                    self.env[left] = right
                 self.stack_data.append(right)
             elif op is code.write_index:
                 value, index, arr = get_target_object(3)
+                arr = get_origin_object(arr)
                 arr[get_origin_object(index)] = value
                 self.stack_data.append(value)
             elif op is code.read_index:
@@ -283,7 +287,7 @@ class Interpreter_bytecode:
                     res = self.builtins_map[func.name](*var_list)
                     self.stack_data.append(get_inner_object(res))
             elif op is code.ret:
-                res = get_target_object(1)
+                res = get_origin_object(get_target_object(1))
                 self.end_func()
                 # 进入新环境可以尝试包装成内置类型一次
                 self.stack_data.append(get_inner_object(res))
