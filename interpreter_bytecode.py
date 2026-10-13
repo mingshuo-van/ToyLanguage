@@ -85,7 +85,7 @@ class Interpreter_bytecode:
         self.func_scope = {v: k for k, v in func_scope.items()}
         self.stack_data = []
         self.stack_frame = []
-        self.env = [0] * len(varname)
+        self.env = [None] * len(varname)
         self.scope = [self.env, None]  # 本层变量作用域引用, 父全作用域引用
         self.op_calc = [
             lambda x, y: x | y if type(y) is dict and type(x) is dict else (
@@ -270,14 +270,14 @@ class Interpreter_bytecode:
                     func: Func = arr
                     var_list = []
                 if func.message.bytecodes is not inner_flag:
-                    func.env = [0] * len(func.message.varname)
+                    func.env = [None] * len(func.message.varname)
                     var_list.reverse()
                     self.stack_frame.append((pc, func))
                     for index, _ in enumerate(func.var_list):
                         func.env[index] = var_list[index]
                     for index in func.message.cells:
                         # 这是要用 Cell 包装的本函数内部变量
-                        func.env[index] = Cell(func.env[index] if index in func.env else None)
+                        func.env[index] = Cell(func.env[index])
                     for level, cur, that in func.message.need_to_get:
                         # 这是本层要沿 parent 链追溯并记录的内容
                         parent = func.parent
