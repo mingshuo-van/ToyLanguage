@@ -461,7 +461,7 @@ class FuncMessage:
     """
     Func 信息
     """
-    __slots__ = ('bytecodes', 'varname', 'consts', 'func_scope', 'cells', 'need_to_get')
+    __slots__ = ('bytecodes', 'varname', 'consts', 'func_scope', 'cells', 'need_to_get', 'global_need')
 
     def __init__(self, bytecodes, varname, consts, func_scope):
         self.bytecodes = bytecodes
@@ -470,6 +470,7 @@ class FuncMessage:
         self.func_scope = func_scope
         self.cells = None
         self.need_to_get = None
+        self.global_need = None
 
     def __eq__(self, other):
         if type(other) is not FuncMessage:
@@ -482,13 +483,15 @@ class FuncMessage:
             return False
         if self.cells != other.cells:
             return False
+        if self.need_to_get != other.need_to_get:
+            return False
         return True
 
     def __hash__(self):
         return hash((
             tuple(x for x in self.bytecodes), str(self.varname), str(self.consts), str(self.func_scope),
-            str(self.cells)))
+            str(self.cells), str(self.need_to_get), str(self.global_need)))
 
     def __repr__(self):
         return str((tuple(x for x in self.bytecodes), str(self.varname), str(self.consts), str(self.func_scope),
-                    str(self.cells)))
+                    str(self.cells), str(self.need_to_get), str(self.global_need)))

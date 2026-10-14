@@ -278,6 +278,12 @@ class Interpreter_bytecode:
                     for index in func.message.cells:
                         # 这是要用 Cell 包装的本函数内部变量
                         func.env[index] = Cell(func.env[index])
+                    if func.message.global_need:
+                        g_s = self.old_message[0][-1][0] if self.old_message else self.env
+                    for index in func.message.global_need:
+                        # 这是用 Cell 包装 全局变量
+                        g_s[index] = Cell(g_s[index]) if type(
+                            g_s[index]) is not Cell else g_s[index]
                     for level, cur, that in func.message.need_to_get:
                         # 这是本层要沿 parent 链追溯并记录的内容
                         parent = func.parent

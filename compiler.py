@@ -136,6 +136,10 @@ class Compiler:
         self.cells = []
         # 只读闭包捕获，只在函数编译中使用
         self.need_to_get = []
+        # 对全局变量的点名捕获标记
+        self.global_cell = False
+        # 记录对全局变量的标记
+        self.global_need = []
 
         self.get_varname_flag('print')
         self.get_varname_flag('time')
@@ -166,21 +170,28 @@ class Compiler:
         """
         if node not in self.varname:
             self.varname[node] = self.varname_counter()
-            if (self.only_read or self.cell_read) and self.old_compile_env:
+            if (self.only_read or self.cell_read or self.global_cell) and self.old_compile_env:
                 get = False
-                level = -1
-                for i in reversed(self.old_compile_env):
-                    level += 1
-                    if node in i[3]:
-                        if self.cell_read:
-                            # 这是记录在变量被捕获的作用域，用来说明变量需要被 Cell 包装
-                            # 用同层的索引直接对应
-                            i[-2].append(i[3][node])
+                if self.global_cell:
+                    scope = self.old_compile_env[0]
+                    if node in scope[3]:
                         get = True
-                        # 这是在当前作用域记录需要捕获它
-                        # 同时记录目标追溯次数，本层索引，在目标层的索引
-                        self.need_to_get.append((level, self.varname[node], i[3][node]))
-                        break
+                        self.global_need.append(scope[3][node])
+                        self.need_to_get.append((len(self.old_compile_env) - 1, self.varname[node], scope[3][node]))
+                else:
+                    level = -1
+                    for i in reversed(self.old_compile_env):
+                        level += 1
+                        if node in i[3]:
+                            if self.cell_read:
+                                # 这是记录在变量被捕获的作用域，用来说明变量需要被 Cell 包装
+                                # 用同层的索引直接对应
+                                i[-3].append(i[3][node])
+                            get = True
+                            # 这是在当前作用域记录需要捕获它
+                            # 同时记录目标追溯次数，本层索引，在目标层的索引
+                            self.need_to_get.append((level, self.varname[node], i[3][node]))
+                            break
                 if not get:
                     raise Lang_Err('NameError', f'{node} is not a variable')
 
@@ -211,7 +222,8 @@ class Compiler:
         self.old_compile_env.append(
             [self.bytecodes, self.back_label, self.back_map, self.varname, self.consts, self.func_scope,
              self.loop_bounds,
-             self.func_counter, self.varname_counter, self.consts_counter, self.cells, self.need_to_get])
+             self.func_counter, self.varname_counter, self.consts_counter, self.cells, self.need_to_get,
+             self.global_need])
         self.bytecodes = []
         self.back_label = []
         self.back_map = {}
@@ -224,11 +236,13 @@ class Compiler:
         self.consts_counter = get_counter()
         self.cells = []
         self.need_to_get = []
+        self.global_need = []
 
     def recovery_old_compile_env(self):
         self.bytecodes, self.back_label, self.back_map, self.varname, self.consts, self.func_scope, \
             self.loop_bounds, \
-            self.func_counter, self.varname_counter, self.consts_counter, self.cells, self.need_to_get = self.old_compile_env.pop()
+            self.func_counter, self.varname_counter, self.consts_counter, self.cells, self.need_to_get, \
+            self.global_need = self.old_compile_env.pop()
 
     def real_write_label_location(self):
         """
@@ -331,7 +345,13 @@ class Compiler:
         """
         op, left, right = node.op, node.left, node.right
         if op == ':=':
+            if not self.old_compile_env:
+                raise Lang_Err('SyntaxError', ':= out of func')
             self.cell_read = True
+        elif op == '=>':
+            if not self.old_compile_env:
+                raise Lang_Err('SyntaxError', '>= out of func')
+            self.global_cell = True
         t = type(left)
         if t is Id:
             flag = self.get_varname_flag(left.id)
@@ -346,6 +366,8 @@ class Compiler:
             self.bytecodes.append((code.write_index,))
         if self.cell_read:
             self.cell_read = False
+        elif self.global_cell:
+            self.global_cell = False
 
     def ret_node(self, node):
         """
@@ -385,6 +407,7 @@ class Compiler:
                               )
         message.cells = self.cells
         message.need_to_get = self.need_to_get
+        message.global_need = self.global_need
         self.recovery_old_compile_env()
 
         self.bytecodes.append((code.read_func_index, self.get_func_scope_flag(message)))
