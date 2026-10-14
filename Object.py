@@ -456,6 +456,12 @@ class Cell:
     def __init__(self, val):
         self.val = val
 
+    def __str__(self):
+        return f'{self.__class__.__name__}({self.val})'
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({repr(self.val)})'
+
 
 class FuncMessage:
     """
