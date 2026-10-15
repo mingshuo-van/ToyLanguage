@@ -125,20 +125,6 @@ class Interpreter_bytecode:
                 index = cur[1]
                 try:
                     self.stack_data.append(self.env[index].val if type(self.env[index]) is Cell else self.env[index])
-                # head = self.varname[index]
-                # get = False
-                # scope = self.scope
-                # while scope is not None:
-                #     if head in scope[0]:
-                #         # 是 Cell 拆箱，是 Inner 保留
-                #         self.stack_data.append(scope[0][head].val if type(scope[0][head]) is Cell else scope[0][head])
-                #         get = True
-                #         break
-                #     else:
-                #         scope = scope[1]
-                # if not get and head in self.builtins_func:
-                #     self.stack_data.append(self.builtins_func[head])
-                #     get = True\\
                 except KeyError:
                     raise Lang_Err('NameError', f'{self.varname[index]} is not a name')
             elif op is code.read_const_index:
@@ -169,7 +155,8 @@ class Interpreter_bytecode:
                 self.stack_data.append(value)
             elif op is code.read_index:
                 right, left = get_target_object(2)
-                self.stack_data.append(left[get_origin_object(right)] if type(left) is InnerList else left[get_inner_object(right)])
+                self.stack_data.append(
+                    left[get_origin_object(right)] if type(left) is InnerList else left[get_inner_object(right)])
             elif op is code.read_slice:
                 right, left, arr = get_target_object(3)
                 want = InnerList()
@@ -178,8 +165,9 @@ class Interpreter_bytecode:
                 self.stack_data.append(want)
             elif op is code.get_list:
                 x = cur[1]
-                arr = self.stack_data[-x:]
-                del self.stack_data[-x:]
+                arr = self.stack_data[-x:] if x != 0 else []
+                if arr:
+                    del self.stack_data[-x:]
                 want = InnerList()
                 for i in arr:
                     want.append(get_inner_object(i))
