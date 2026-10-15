@@ -96,7 +96,7 @@ class calc(IntEnum):
 
 class Compiler:
 
-    def __init__(self, ast):
+    def __init__(self, ast, inner_func):
         self.node_level = 0
         self.ast = ast
         self.bytecodes = []
@@ -141,8 +141,8 @@ class Compiler:
         # 记录对全局变量的标记
         self.global_need = []
 
-        self.get_varname_flag('print')
-        self.get_varname_flag('time')
+        for i in inner_func.keys():
+            self.get_varname_flag(i)
 
     def inner(self, node):
         """
@@ -270,10 +270,11 @@ class Compiler:
         """
         self.node_level += 1
         res = None
+        if node is None:
+            self.bytecodes.append((code.push, InnerNull))
+            return
         t = type(node)
-        if t is None:
-            self.bytecodes.append((code.push, None))
-        elif t in self.direct_ret_type:
+        if t in self.direct_ret_type:
             res = t
             if t is Break_stmt:
                 if self.loop_bounds is None:

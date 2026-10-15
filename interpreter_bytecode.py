@@ -19,56 +19,6 @@ def fac(n):
     return factorial(n)
 
 
-class Func:
-    __slots__ = ('name', 'var_list', 'message', 'parent', 'env')
-
-    def __init__(self, name, var_list, message, parent=None):
-        self.name = name
-        self.var_list = var_list
-        self.message = message
-        self.parent = parent
-        self.env = None
-
-    def __repr__(self):
-        return f'(Func {self.name} {self.var_list})'
-
-
-def get_inner_object(node):
-    """
-    获得 Inner 包装
-    :param node: element
-    :return: Inner
-    """
-    t = type(node)
-    if t is int:
-        f = InnerInt
-    elif t is float:
-        f = InnerFloat
-    elif t is str:
-        f = InnerStr
-    elif t is bool:
-        f = InnerBool
-    else:
-        f = None
-    return f(node) if f is not None else node
-
-
-def get_origin_object(node):
-    """
-    辅助拆箱 cell 和 inner
-    在 read 或 具备 read 语义的情况下用于获得内置元素
-    但不会直接用于 write 的 左值
-    取决于具体的功能
-    :param node: 要处理的元素
-    :return: node | Cell.val
-    """
-    node = node.val if type(node) is Cell else node
-    if isinstance(node, Inner):
-        return node.val
-    return node
-
-
-inner_flag = object()
 need_to_be_cell = object()
 
 from InnerFunc import *
@@ -78,7 +28,7 @@ class Interpreter_bytecode:
     __slots__ = ('bytecodes', 'varname', 'consts', 'func_scope', 'stack_data', 'stack_frame', 'env', 'scope', 'op_calc'
                  , 'old_message', 'builtins_func', 'builtins_map')
 
-    def __init__(self, bytecodes, varname, consts, func_scope):
+    def __init__(self, bytecodes, varname, consts, func_scope, builtins_func, builtins_map):
         self.bytecodes = bytecodes
         self.varname = {v: k for k, v in varname.items()}
         self.consts = {v: k for k, v in consts.items()}
@@ -113,16 +63,11 @@ class Interpreter_bytecode:
             lambda val: -val
         ]
         self.old_message = []
-        self.builtins_func = {
-            'print': Func('print', ['line', 'end'],
-                          FuncMessage(inner_flag, {0: 'line', 1: 'end'}, {}, {}), self.env),
-            'time': Func('time', [],
-                         FuncMessage(inner_flag, {0: 'line', 1: 'end'}, {}, {}), self.env)
-        }
-        self.builtins_map = {
-            'print': inner_print,
-            'time': inner_time
-        }
+        self.builtins_func = builtins_func
+        for k, v in self.builtins_func.items():
+            v.name = k
+            v.parent = self.scope
+        self.builtins_map = builtins_map
         builtins_index = 0
         for func in self.builtins_func.values():
             self.env[builtins_index] = func
@@ -217,11 +162,14 @@ class Interpreter_bytecode:
             elif op is code.write_index:
                 value, index, arr = get_target_object(3)
                 arr = get_origin_object(arr)
-                arr[get_origin_object(index)] = value
+                if type(arr) is InnerList:
+                    arr[get_origin_object(index)] = value
+                else:
+                    arr[get_inner_object(index)] = value
                 self.stack_data.append(value)
             elif op is code.read_index:
                 right, left = get_target_object(2)
-                self.stack_data.append(left[get_origin_object(right)])
+                self.stack_data.append(left[get_origin_object(right)] if type(left) is list else left[get_inner_object(right)])
             elif op is code.read_slice:
                 right, left, arr = get_target_object(3)
                 want = InnerList()
@@ -234,7 +182,7 @@ class Interpreter_bytecode:
                 del self.stack_data[-x:]
                 want = InnerList()
                 for i in arr:
-                    want.append(i)
+                    want.append(get_inner_object(i))
                 self.stack_data.append(want)
             elif op is code.get_dict:
                 x = cur[1]
@@ -244,7 +192,7 @@ class Interpreter_bytecode:
                     arr[get_origin_object(left)] = right
                 want = InnerDict()
                 for k, v in dict(reversed(list(arr.items()))).items():
-                    want[k] = v
+                    want[get_inner_object(k)] = get_inner_object(v)
                 self.stack_data.append(want)
             elif op is code.jump_if_false:
                 if not get_target_object(1):
@@ -295,6 +243,7 @@ class Interpreter_bytecode:
                     bytecodes = self.bytecodes
                     size = len(bytecodes)
                 else:
+                    var_list.reverse()
                     res = self.builtins_map[func.name](*var_list)
                     self.stack_data.append(get_inner_object(res))
             elif op is code.ret:

@@ -430,6 +430,18 @@ class InnerBool(Inner):
         return bool(self.val)
 
 
+class NullMate(type):
+    def __str__(self):
+        return 'null'
+
+    def __repr__(self):
+        return 'null'
+
+
+class InnerNull(metaclass=NullMate):
+    pass
+
+
 class InnerList(list):
     """
     内置 list 类型
@@ -457,10 +469,27 @@ class Cell:
         self.val = val
 
     def __str__(self):
-        return f'{self.__class__.__name__}({self.val})'
+        return f'{self.val}'
 
     def __repr__(self):
         return f'{self.__class__.__name__}({repr(self.val)})'
+
+
+class Func:
+    __slots__ = ('name', 'var_list', 'message', 'parent', 'env')
+
+    def __init__(self, name, var_list, message, parent=None):
+        self.name = name
+        self.var_list = var_list
+        self.message = message
+        self.parent = parent
+        self.env = None
+
+    def __repr__(self):
+        return f'(Func {self.name} {self.var_list})'
+
+
+inner_flag = object()
 
 
 class FuncMessage:
