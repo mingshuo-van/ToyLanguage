@@ -1,5 +1,6 @@
 from Object import *
 
+
 def get_inner_object(node):
     """
     获得 Inner 包装
@@ -20,6 +21,7 @@ def get_inner_object(node):
     else:
         f = None
     return f(node) if f is not None else node
+
 
 def get_origin_object(node):
     """
@@ -45,7 +47,7 @@ def get_func(var_list):
 
 
 def inner_print(line, end='\n'):
-    print(str(line), end=end)
+    print(str(line), end=get_origin_object(end))
 
 
 from time import time
@@ -129,9 +131,9 @@ def inner_push(box, idx):
         raise Lang_Err(e.__class__.__name__, str(e))
 
 
-def inner_pop(box, key):
+def inner_pop(box, key=-1):
     try:
-        return box.pop(key)
+        return box.pop(key) if type(box) is InnerDict else box.pop(get_origin_object(key))
     except Exception as e:
         raise Lang_Err(e.__class__.__name__, str(e))
 
@@ -150,6 +152,44 @@ def inner_len(box):
         raise Lang_Err(e.__class__.__name__, str(e))
 
 
+def inner_join(box, link=''):
+    try:
+        return get_origin_object(link).join([get_origin_object(i) for i in box])
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__, str(e))
+
+
+def inner_split(string, sep=None, max_split=-1):
+    try:
+        res = InnerList()
+        for i in get_origin_object(string).split(sep=get_origin_object(sep), maxsplit=get_origin_object(max_split)):
+            res.append(get_inner_object(i))
+        return res
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__, str(e))
+
+
+def inner_strip(string, chars=None):
+    try:
+        return get_origin_object(string).strip(get_origin_object(chars))
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__, str(e))
+
+
+def inner_lstrip(string, chars=None):
+    try:
+        return get_origin_object(string).lstrip(get_origin_object(chars))
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__, str(e))
+
+
+def inner_rstrip(string, chars=None):
+    try:
+        return get_origin_object(string).rstrip(get_origin_object(chars))
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__, str(e))
+
+
 builtins_func = {
     'print': get_func(['line', 'end']),
     'time': get_func([]),
@@ -163,7 +203,12 @@ builtins_func = {
     'push': get_func(['box', 'idx']),
     'pop': get_func(['box', 'key']),
     'has': get_func(['box', 'key']),
-    'len': get_func(['box'])
+    'len': get_func(['box']),
+    'join': get_func(['box', 'link']),
+    'split': get_func(['string', 'sep', 'max_split']),
+    'strip': get_func(['string', 'chars']),
+    'lstrip': get_func(['string', 'chars']),
+    'rstrip': get_func(['string', 'chars']),
 }
 
 builtins_map = {
@@ -179,16 +224,16 @@ builtins_map = {
     'push': inner_push,
     'pop': inner_pop,
     'has': inner_has,
-    'len': inner_len
+    'len': inner_len,
+    'join': inner_join,
+    'split': inner_split,
+    'strip': inner_strip,
+    'lstrip': inner_lstrip,
+    'rstrip': inner_rstrip
 }
 
 """
 'vars': Func([], [], None),
-'join': Func([Id('box'), Id('s')], [], None),
-'split': Func([Id('target'), Id('cut'), Id('count')], [], None),
-'strip': Func([Id('s')], [], None),
-'lstrip': Func([Id('s')], [], None),
-'rstrip': Func([Id('s')], [], None),
 'find': Func([Id('target'), Id('sub'), Id('start'), Id('end')], [], None),
 'count': Func([Id('target'), Id('sub'), Id('start'), Id('end')], [], None),
 'replace': Func([Id('target'), Id('old'), Id('new'), Id('count')], [], None),
