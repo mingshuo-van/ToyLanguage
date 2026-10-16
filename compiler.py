@@ -269,28 +269,30 @@ class Compiler:
         :return: None | 类型
         """
         self.node_level += 1
-        res = None
-        if node is None:
-            self.bytecodes.append((code.push, InnerNull))
-            return
         t = type(node)
-        if t in self.direct_ret_type:
-            res = t
-            if t is Break_stmt:
-                if self.loop_bounds is None:
-                    raise Lang_Err('SyntaxError', 'break out of loop')
-                else:
-                    self.add_code_label(code.jump, self.loop_bounds[1])
-            if t is Continue_stmt:
-                if self.loop_bounds is None:
-                    raise Lang_Err('SyntaxError', 'continue out of loop')
-                else:
-                    self.add_code_label(code.jump, self.loop_bounds[0])
-        else:
-            self.need_compile[t](node)
-        if self.node_level == 1 and t in self.need_pop:
-            self.bytecodes.append((code.pop,))
-        self.node_level -= 1
+        try:
+            res = None
+            if node is None:
+                self.bytecodes.append((code.push, InnerNull))
+                return
+            if t in self.direct_ret_type:
+                res = t
+                if t is Break_stmt:
+                    if self.loop_bounds is None:
+                        raise Lang_Err('SyntaxError', 'break out of loop')
+                    else:
+                        self.add_code_label(code.jump, self.loop_bounds[1])
+                if t is Continue_stmt:
+                    if self.loop_bounds is None:
+                        raise Lang_Err('SyntaxError', 'continue out of loop')
+                    else:
+                        self.add_code_label(code.jump, self.loop_bounds[0])
+            else:
+                self.need_compile[t](node)
+        finally:
+            if self.node_level == 1 and t in self.need_pop:
+                self.bytecodes.append((code.pop,))
+            self.node_level -= 1
         return res
 
     def process_List_and_Dict(self, node):
@@ -395,10 +397,9 @@ class Compiler:
         for i in var_list:
             # 保证形参一定被记录在varname中
             self.get_varname_flag(i.id)
-        for i in body:
-            self.compile(i)
+        self.compile_block(body)
         if len(self.bytecodes) < 1 or self.bytecodes[-1][0] is not code.ret:
-            self.bytecodes.append((code.push, None))
+            self.bytecodes.append((code.push, InnerNull))
             self.bytecodes.append((code.ret,))
         self.real_write_label_location()
         message = FuncMessage(self.bytecodes,
