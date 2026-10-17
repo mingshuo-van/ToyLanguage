@@ -147,7 +147,7 @@ def inner_has(box, key):
 
 def inner_len(box):
     try:
-        return len(box)
+        return len(get_origin_object(box))
     except Exception as e:
         raise Lang_Err(e.__class__.__name__, str(e))
 
@@ -190,6 +190,52 @@ def inner_rstrip(string, chars=None):
         raise Lang_Err(e.__class__.__name__, str(e))
 
 
+"""
+'find': Func([Id('target'), Id('sub'), Id('start'), Id('end')], [], None),
+'count': Func([Id('target'), Id('sub'), Id('start'), Id('end')], [], None),
+'replace': Func([Id('target'), Id('old'), Id('new'), Id('count')], [], None),
+"""
+
+
+def inner_find(string, sub, start=0, end=None):
+    try:
+        string = get_origin_object(string)
+        if end is None:
+            end = len(string)
+        else:
+            end = get_origin_object(end)
+        start = get_origin_object(start)
+        sub = get_origin_object(sub)
+        return string.find(sub, start, end)
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__, str(e))
+
+
+def inner_count(string, sub, start=0, end=None):
+    try:
+        string = get_origin_object(string)
+        if end is None:
+            end = len(string)
+        else:
+            end = get_origin_object(end)
+        start = get_origin_object(start)
+        sub = get_origin_object(sub)
+        return string.count(sub, start, end)
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__, str(e))
+
+
+def inner_replace(string, old, new, count=-1):
+    try:
+        count = get_origin_object(count)
+        new = get_origin_object(new)
+        old = get_origin_object(old)
+        string = get_origin_object(string)
+        return string.replace(old, new, count)
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__, str(e))
+
+
 builtins_func = {
     'print': get_func(['line', 'end']),
     'time': get_func([]),
@@ -209,6 +255,9 @@ builtins_func = {
     'strip': get_func(['string', 'chars']),
     'lstrip': get_func(['string', 'chars']),
     'rstrip': get_func(['string', 'chars']),
+    'find': get_func(['string', 'sub', 'start', 'end']),
+    'count': get_func(['string', 'sub', 'start', 'end']),
+    'replace': get_func(['string', 'old', 'new', 'count']),
 }
 
 builtins_map = {
@@ -229,14 +278,14 @@ builtins_map = {
     'split': inner_split,
     'strip': inner_strip,
     'lstrip': inner_lstrip,
-    'rstrip': inner_rstrip
+    'rstrip': inner_rstrip,
+    'find': inner_find,
+    'count': inner_count,
+    'replace': inner_replace
 }
 
 """
 'vars': Func([], [], None),
-'find': Func([Id('target'), Id('sub'), Id('start'), Id('end')], [], None),
-'count': Func([Id('target'), Id('sub'), Id('start'), Id('end')], [], None),
-'replace': Func([Id('target'), Id('old'), Id('new'), Id('count')], [], None),
 'seed': Func([Id('instance')], [], None),
 'random': Func([], [], None),
 'randrange': Func([Id('start'), Id('end'), Id('step')], [], None),
