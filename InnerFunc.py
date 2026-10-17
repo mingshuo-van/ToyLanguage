@@ -190,13 +190,6 @@ def inner_rstrip(string, chars=None):
         raise Lang_Err(e.__class__.__name__, str(e))
 
 
-"""
-'find': Func([Id('target'), Id('sub'), Id('start'), Id('end')], [], None),
-'count': Func([Id('target'), Id('sub'), Id('start'), Id('end')], [], None),
-'replace': Func([Id('target'), Id('old'), Id('new'), Id('count')], [], None),
-"""
-
-
 def inner_find(string, sub, start=0, end=None):
     try:
         string = get_origin_object(string)
