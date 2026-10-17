@@ -156,12 +156,17 @@ class Interpreter_bytecode:
             elif op is code.read_index:
                 right, left = get_target_object(2)
                 self.stack_data.append(
-                    left[get_origin_object(right)] if type(left) is InnerList else left[get_inner_object(right)])
+                    left[get_origin_object(right)] if type(left) is InnerList else (
+                        left.val[get_origin_object(right)] if
+                        type(left) is InnerStr else left[get_inner_object(right)]))
             elif op is code.read_slice:
                 right, left, arr = get_target_object(3)
-                want = InnerList()
-                for i in arr[get_origin_object(left):get_origin_object(right)]:
-                    want.append(i)
+                if type(arr) is InnerList:
+                    want = InnerList()
+                    for i in arr[get_origin_object(left):get_origin_object(right)]:
+                        want.append(i)
+                elif type(arr) is InnerStr:
+                    want = InnerStr(arr.val[get_origin_object(left):get_origin_object(right)])
                 self.stack_data.append(want)
             elif op is code.get_list:
                 x = cur[1]
