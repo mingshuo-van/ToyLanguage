@@ -157,7 +157,7 @@ class Interpreter_bytecode:
                 right, left = get_target_object(2)
                 self.stack_data.append(
                     left[get_origin_object(right)] if type(left) is InnerList else (
-                        left.val[get_origin_object(right)] if
+                        get_inner_object(left.val[get_origin_object(right)]) if
                         type(left) is InnerStr else left[get_inner_object(right)]))
             elif op is code.read_slice:
                 right, left, arr = get_target_object(3)
