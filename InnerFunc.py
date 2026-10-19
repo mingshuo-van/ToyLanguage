@@ -229,6 +229,29 @@ def inner_replace(string, old, new, count=-1):
         raise Lang_Err(e.__class__.__name__, str(e))
 
 
+"""
+'seed': Func([Id('instance')], [], None),
+'random': Func([], [], None),
+'randrange': Func([Id('start'), Id('end'), Id('step')], [], None),
+"""
+from random import seed, random, randrange
+
+
+def inner_seed(instance=None):
+    return seed(get_origin_object(instance))
+
+
+def inner_random():
+    return random()
+
+
+def inner_randint(start, stop, step=1):
+    start = get_origin_object(start)
+    stop = get_origin_object(stop)
+    step = get_origin_object(step)
+    return randrange(start, stop + 1, step)
+
+
 builtins_func = {
     'print': get_func(['line', 'end']),
     'time': get_func([]),
@@ -251,6 +274,9 @@ builtins_func = {
     'find': get_func(['string', 'sub', 'start', 'end']),
     'count': get_func(['string', 'sub', 'start', 'end']),
     'replace': get_func(['string', 'old', 'new', 'count']),
+    'seed': get_func(['instance']),
+    'random': get_func([]),
+    'randint': get_func(['start', 'stop', 'step'])
 }
 
 builtins_map = {
@@ -274,14 +300,14 @@ builtins_map = {
     'rstrip': inner_rstrip,
     'find': inner_find,
     'count': inner_count,
-    'replace': inner_replace
+    'replace': inner_replace,
+    'seed': inner_seed,
+    'random': inner_random,
+    'randint': inner_randint
 }
 
 """
 'vars': Func([], [], None),
-'seed': Func([Id('instance')], [], None),
-'random': Func([], [], None),
-'randrange': Func([Id('start'), Id('end'), Id('step')], [], None),
 'open': Func([Id('address'), Id('mode'), Id('coding')], [], None),
 'read': Func([Id('file_handle')], [], None),
 'write': Func([Id('file_handle'), Id('word')], [], None),
