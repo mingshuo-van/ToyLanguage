@@ -252,6 +252,50 @@ def inner_randint(start, stop, step=1):
     return randrange(start, stop + 1, step)
 
 
+def inner_open(address, mode, coding='utf8'):
+    try:
+        mode = get_origin_object(mode)
+        kwargs = {}
+        if 'b' not in mode:
+            kwargs['encoding'] = get_origin_object(coding)
+        return InnerFileHandle(
+            open(get_origin_object(address), mode=mode, **kwargs)
+        )
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__, str(e))
+
+
+def inner_read(file_handle):
+    try:
+        res = InnerList()
+        for line in file_handle.handle:
+            res.append(get_inner_object(line))
+        return res
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__, str(e))
+
+
+def inner_write(file_handle, lines):
+    try:
+        h = file_handle.handle
+        encoding = h.encoding
+        if 'b' in h.mode:
+            for l in lines:
+                h.write(get_origin_object(l).encode(encoding))
+        else:
+            for l in lines:
+                h.write(get_origin_object(l))
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__, str(e))
+
+
+def inner_close(file_handle):
+    try:
+        return file_handle.handle.close()
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__, str(e))
+
+
 builtins_func = {
     'print': get_func(['line', 'end']),
     'time': get_func([]),
@@ -276,7 +320,11 @@ builtins_func = {
     'replace': get_func(['string', 'old', 'new', 'count']),
     'seed': get_func(['instance']),
     'random': get_func([]),
-    'randint': get_func(['start', 'stop', 'step'])
+    'randint': get_func(['start', 'stop', 'step']),
+    'open': get_func(['address', 'mode', 'coding']),
+    'read': get_func(['file_handle']),
+    'write': get_func(['file_handle', 'lines']),
+    'close': get_func(['file_handle'])
 }
 
 builtins_map = {
@@ -303,15 +351,15 @@ builtins_map = {
     'replace': inner_replace,
     'seed': inner_seed,
     'random': inner_random,
-    'randint': inner_randint
+    'randint': inner_randint,
+    'open': inner_open,
+    'read': inner_read,
+    'write': inner_write,
+    'close': inner_close
 }
 
 """
 'vars': Func([], [], None),
-'open': Func([Id('address'), Id('mode'), Id('coding')], [], None),
-'read': Func([Id('file_handle')], [], None),
-'write': Func([Id('file_handle'), Id('word')], [], None),
-'close': Func([Id('file_handle')], [], None),
 'exit': Func([Id('num')], [], None),
 'err_name': Func([Id('err')], [], None),
 'err_des': Func([Id('err')], [], None),

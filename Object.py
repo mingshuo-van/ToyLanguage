@@ -530,3 +530,16 @@ class FuncMessage:
     def __repr__(self):
         return str((tuple(x for x in self.bytecodes), str(self.varname), str(self.consts), str(self.func_scope),
                     str(self.cells), str(self.need_to_get), str(self.global_need)))
+
+
+class InnerFileHandle:
+    __slots__ = ('handle',)
+
+    def __init__(self, handle):
+        self.handle = handle
+
+    def __str__(self):
+        return f'name:{self.handle.name} mode:{self.handle.mode} encoding:{self.handle.encoding} closed:{InnerBool(self.handle.closed)}'
+
+    def __repr__(self):
+        return self.__str__()
