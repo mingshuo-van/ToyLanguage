@@ -300,7 +300,7 @@ class For_stmt(Statement):
         return f'(for {self.id} in ({self.start},{self.end},{self.start}))' if self.domain is None else f'(for {self.id} in {self.domain})'
 
 
-class Exit_Error(Exception):
+class Exit_Error(BaseException):
     """
     exit Exception，以区分退出当前代码和退出整个解释器程序
     使用异常，保证一定能穿透到上层

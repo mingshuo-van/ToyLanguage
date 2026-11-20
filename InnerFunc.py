@@ -295,6 +295,11 @@ def inner_close(file_handle):
     except Exception as e:
         raise Lang_Err(e.__class__.__name__, str(e))
 
+def inner_exit(ret_code:0):
+    try:
+        raise Exit_Error(get_origin_object(ret_code))
+    except Exception as e:
+        raise Lang_Err(e.__class__.__name__,str(e))
 
 builtins_func = {
     'print': get_func(['line', 'end']),
@@ -324,7 +329,8 @@ builtins_func = {
     'open': get_func(['address', 'mode', 'coding']),
     'read': get_func(['file_handle']),
     'write': get_func(['file_handle', 'lines']),
-    'close': get_func(['file_handle'])
+    'close': get_func(['file_handle']),
+    'exit': get_func(['ret_code'])
 }
 
 builtins_map = {
@@ -355,12 +361,12 @@ builtins_map = {
     'open': inner_open,
     'read': inner_read,
     'write': inner_write,
-    'close': inner_close
+    'close': inner_close,
+    'exit': inner_exit
 }
 
 """
 'vars': Func([], [], None),
-'exit': Func([Id('num')], [], None),
 'err_name': Func([Id('err')], [], None),
 'err_des': Func([Id('err')], [], None),
 'clear': Func([], [], None)
